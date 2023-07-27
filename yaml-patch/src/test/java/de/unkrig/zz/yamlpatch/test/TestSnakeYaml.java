@@ -199,7 +199,7 @@ class TestSnakeYaml {
         return result;
     }
 
-    private static <T> List<T>
+    @SafeVarargs private static <T> List<T>
     listOf(T... elements) {
         return Arrays.asList(elements);
     }
