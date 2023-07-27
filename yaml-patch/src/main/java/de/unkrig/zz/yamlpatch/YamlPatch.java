@@ -318,7 +318,6 @@ class YamlPatch {
                 if ((m = SET_MEMBER_SPEC.matcher(s)).lookingAt()) {  // {<yaml-document>}
 
                     if (!(el instanceof Set)) throw new IllegalArgumentException("Element is not a set");
-                    @SuppressWarnings("unchecked") @NotNull List<Object> yamlSequence = (List<Object>) el;
                     @SuppressWarnings("unchecked") Set<Object> yamlSet = (Set<Object>) el;
 
                     Object member = YamlPatch.loadYaml(new StringReader(m.group(1)));
