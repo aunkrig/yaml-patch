@@ -63,9 +63,15 @@ class Main {
         System.exit(0);
     }
 
+    /**
+     * Output formatting; FLOW=single line, BLOCK=each item one a separate line, AUTO: in between
+     */
     @CommandLineOption public void
     setFlowStyle(FlowStyle value) { this.yamlPatch.setFlowStyle(value); }
 
+    /**
+     * If existing files would be overwritten, keep copies of the originals
+     */
     @CommandLineOption public void
     setKeepOriginals() { this.yamlPatch.setKeepOriginals(true); }
 
