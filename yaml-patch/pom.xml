@@ -44,7 +44,10 @@
 			-->
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>2.6</version>
+<!-- 
+ 				<version>2.6</version>
+ -->
+ 				<version>2.2-beta-5</version>
 				<configuration>
 					<descriptorRefs><descriptorRef>jar-with-dependencies</descriptorRef></descriptorRefs>
 					<archive>
@@ -66,7 +69,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
+<!-- 
 				<version>2.4</version>
+ -->
+				<version>3.0.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -79,7 +85,7 @@
 			<plugin>
 				<groupId>org.sonatype.plugins</groupId>
 				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.8</version>
+				<version>1.6.7</version>
 				<extensions>true</extensions>
 				<configuration>
 					 <serverId>ossrh</serverId>
