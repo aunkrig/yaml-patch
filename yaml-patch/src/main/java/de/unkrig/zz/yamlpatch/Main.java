@@ -92,10 +92,21 @@ class Main {
     }
 
     /**
-     * Add or change one sequence element or map entry.
+     * Add or change one map entry or sequence element.
+     * <dl>
+     *   <dt>--existing</dt>
+     *   <dd>Verify that the map entry resp. sequence element already exists</dd>
+     *   <dt>--non-existing</dt>
+     *   <dd>Verify that the map entry resp. sequence element does not exist already</dd>
+     *   <dt>--comment</dt>
+     *   <dd>
+     *     Iff this changes an existing map entry, or an existing sequence element, add an end comment to the map resp.
+     *     sequence that displays the original map entry resp. sequence element
+     *   </dd>
+     * </dl>
      * 
      * @param value      ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
-     * @param setOptions [ --existing | --non-existing ]
+     * @param setOptions [ --existing | --non-existing ] [ --comment ]
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addSet(SetOptions setOptions, String spec, String value) throws IOException {
@@ -121,8 +132,17 @@ class Main {
 
     /**
      * Removes one sequence element, map entry or set member.
+     * <dl>
+     *   <dt>--existing</dt>
+     *   <dd>Verify that the map entry resp. set member already exists</dd>
+     *   <dt>--comment</dt>
+     *   <dd>
+     *     Iff a map entry, sequence element or set member was removed, add an end comment to the map resp. sequence
+     *     resp. set that displays the removed map entry resp. sequence element resp. set member
+     *   </dd>
+     * </dl>
      * 
-     * @param removeOptions [ --existing ]
+     * @param removeOptions [ --existing ] [ --comment ]
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addRemove(RemoveOptions removeOptions, String spec) throws IOException {
@@ -205,7 +225,7 @@ class Main {
      *   <dt>{@code .(}<var>yaml-document</var>{@code )}</dt>
      *   <dd>Use the given map entry.</dd>
      *   <dt>{@code [}<var>0...sequenceSize-1</var>{@code ]}</dt>
-     *   <dd>Use the sequence element with the given index index <var>n</var>.</dd>
+     *   <dd>Use the sequence element with the given index.</dd>
      *   <dt>{@code [}<var>-sequenceSize...-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
      *   <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
