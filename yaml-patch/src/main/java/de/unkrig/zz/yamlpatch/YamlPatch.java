@@ -127,7 +127,7 @@ class YamlPatch {
      *                                range
      * @throws SpecMatchException     <var>mode</var> is {@code NON_EXISTING}, and the specified sequence index does
      *                                not equal the sequence size
-     * @throws SpecMatchException     The designated node is a set (use {@link #add(Object, String)} instead)
+     * @throws SpecMatchException     The designated node is a set (use {@link #add(Node, String)} instead)
      * @throws SpecMatchException     See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException    See {@link #processSpec(Node, String, SpecHandler)}
      */
