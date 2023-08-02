@@ -26,10 +26,13 @@
 
 package de.unkrig.zz.yamlpatch.test;
 
+import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,7 +40,20 @@ import org.snakeyaml.engine.v2.api.Dump;
 import org.snakeyaml.engine.v2.api.DumpSettings;
 import org.snakeyaml.engine.v2.api.Load;
 import org.snakeyaml.engine.v2.api.LoadSettings;
+import org.snakeyaml.engine.v2.api.lowlevel.Compose;
+import org.snakeyaml.engine.v2.comments.CommentLine;
+import org.snakeyaml.engine.v2.comments.CommentType;
 import org.snakeyaml.engine.v2.common.FlowStyle;
+import org.snakeyaml.engine.v2.composer.Composer;
+import org.snakeyaml.engine.v2.constructor.BaseConstructor;
+import org.snakeyaml.engine.v2.constructor.StandardConstructor;
+import org.snakeyaml.engine.v2.nodes.MappingNode;
+import org.snakeyaml.engine.v2.nodes.Node;
+import org.snakeyaml.engine.v2.parser.ParserImpl;
+import org.snakeyaml.engine.v2.scanner.StreamReader;
+
+import de.unkrig.commons.nullanalysis.NotNull;
+import de.unkrig.zz.yamlpatch.YamlPatch;
 
 public
 class TestSnakeYaml {
@@ -159,6 +175,69 @@ class TestSnakeYaml {
             + "  3.0: 5.0\n" 
             + "  nulL: trUE\n" 
         ), output);
+    }
+
+    @Test public void
+    testLoadingFirst() throws Exception {
+
+        StringReader sr = new StringReader("{a: b,c: d} x sd a sfd g sdfg sfd  sdfg sdf  gsdfg  sfdg sgd fs d sdfg sdf g");
+
+        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).build();
+
+        ParserImpl      parser       = new ParserImpl(settings, new StreamReader(settings, sr));
+        Composer        composer     = new Composer(settings, parser);
+        BaseConstructor constructor  = new StandardConstructor(settings);
+
+        // Drop the STREAM-START event.
+        parser.next();
+
+        Node node = composer.next();
+
+        Assert.assertEquals(11, node.getEndMark().get().getIndex());
+
+        Object doc = constructor.constructSingleDocument(Optional.of(node));
+
+        Assert.assertEquals("{a: b, c: d}", new Dump(DumpSettings.builder().build()).dumpToString(doc).trim());
+    }
+
+    @Test public void
+    testComments() {
+        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).setParseComments(true).build();
+        Node yamlDocument = new Compose(settings).composeReader(new StringReader(
+            ""
+            + "a:\n"
+            + "  b: c\n"
+            + "  #d: e\n" // <= "d: e" is a block comment for "f"
+            + "  f: g\n"
+            + "  #h: i\n" // <= "h: i" is an end comment of the top-level map (the one that contains the "a" key)
+        )).get();
+
+        Assert.assertEquals((
+            ""
+            + "a:\n"
+            + "  b: c\n"
+            + "  #d: e\n"
+            + "  f: g\n"
+            + "#h: i\n"  // <= Notice that the indentation of this comment has changed
+        ), YamlPatch.dump(yamlDocument));
+
+        // Remove the wrongly indented comment.
+        yamlDocument.getEndComments().remove(0);
+        // Re-create the comment as an end comment of "g".
+        Node _a = ((MappingNode) yamlDocument).getValue().get(0).getValueNode();
+        Node _a_g = ((MappingNode) _a).getValue().get(1).getValueNode();
+        List<CommentLine> ec = _a_g.getEndComments();
+        if (ec == null) _a_g.setEndComments((ec = new ArrayList<CommentLine>()));
+        ec.add(new CommentLine(Optional.empty(), Optional.empty(), "h: i", CommentType.BLOCK));
+
+        Assert.assertEquals((
+            ""
+            + "a:\n"
+            + "  b: c\n"
+            + "  #d: e\n"
+            + "  f: g\n"
+            + "  #h: i\n" // <= Now it is an end comment of "g", and the indentation fits!
+        ), YamlPatch.dump(yamlDocument));
     }
 
     private static <K, V> Object

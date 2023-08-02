@@ -35,7 +35,7 @@ import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-import org.snakeyaml.engine.v2.common.FlowStyle;
+import org.snakeyaml.engine.v2.nodes.Node;
 
 import de.unkrig.commons.file.ExceptionHandler;
 import de.unkrig.commons.file.filetransformation.FileTransformations;
@@ -64,13 +64,7 @@ class Main {
     }
 
     /**
-     * Output formatting; FLOW=single line, BLOCK=each item one a separate line, AUTO: in between
-     */
-    @CommandLineOption public void
-    setFlowStyle(FlowStyle value) { this.yamlPatch.setFlowStyle(value); }
-
-    /**
-     * If existing files would be overwritten, keep copies of the originals
+     * For in-place transformations, keep copies of the originals
      */
     @CommandLineOption public void
     setKeepOriginals() { this.yamlPatch.setKeepOriginals(true); }
@@ -79,6 +73,7 @@ class Main {
     class SetOptions {
 
         public SetMode mode = SetMode.ANY;
+        public boolean commentOutOriginalEntry;
 
         /**
          * The map entry or sequence element affected by the operation must exist (and is replaced).
@@ -89,28 +84,39 @@ class Main {
          * The map entry or sequence element affected by the operation must not exist (and is created).
          */
         @CommandLineOption public void setNonExisting() { this.mode = SetMode.NON_EXISTING; }
+
+        /**
+         * Add a comment for the original map entry resp. sequence element.
+         */
+        @CommandLineOption public void comment() { this.commentOutOriginalEntry = true; }
     }
 
     /**
-     * Puts an entry into a set, or changes one sequence element.
+     * Add or change one sequence element or map entry.
      * 
      * @param value      ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
      * @param setOptions [ --existing | --non-existing ]
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addSet(SetOptions setOptions, String spec, String value) throws IOException {
-        this.yamlPatch.addSet(spec, Main.yamlDocumentOrFile(value), setOptions.mode);
+        this.yamlPatch.addSet(spec, Main.yamlDocumentOrFile(value), setOptions.mode, setOptions.commentOutOriginalEntry);
     }
 
     public static
     class RemoveOptions {
 
         public RemoveMode mode = RemoveMode.ANY;
+        public boolean    commentOutOriginalEntry;
 
         /**
          * The specified map entry must exist.
          */
         @CommandLineOption public void setExisting() { this.mode = RemoveMode.EXISTING; }
+
+        /**
+         * Add a comment for the removed map entry, sequence element or set member
+         */
+        @CommandLineOption public void comment() { this.commentOutOriginalEntry = true; }
     }
 
     /**
@@ -120,7 +126,7 @@ class Main {
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addRemove(RemoveOptions removeOptions, String spec) throws IOException {
-        this.yamlPatch.addRemove(spec, removeOptions.mode);
+        this.yamlPatch.addRemove(spec, removeOptions.mode, removeOptions.commentOutOriginalEntry);
     }
 
     /**
@@ -141,7 +147,7 @@ class Main {
         this.yamlPatch.addAdd(spec);
     }
 
-    public static Object
+    public static Node
     yamlDocumentOrFile(String yamlDocumentOrFile) throws IOException, FileNotFoundException {
 
         try (Reader r = Main.stringOrFileReader(yamlDocumentOrFile)) {
@@ -202,7 +208,7 @@ class Main {
      *   <dd>Use the sequence element with the given index index <var>n</var>.</dd>
      *   <dt>{@code [}<var>-sequenceSize...-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
-     *   <dt><code>{</code><var>yaml-document</var><code>}</code></dt>
+     *   <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
      *   <dd>Use the given set member.</dd>
      * </dl>
      */
