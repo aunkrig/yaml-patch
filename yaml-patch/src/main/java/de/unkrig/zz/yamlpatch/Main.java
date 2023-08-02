@@ -196,17 +196,17 @@ class Main {
      *   <dd>
      *     Parse the literal <var>YAML-document</var>, modify it, and print it to STDOUT.
      *   </dd>
-     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file-or-dir</var></dt>
+     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file</var></dt>
      *   <dd>
-     *     Transforms <var>file-or-dir</var> in-place.
+     *     Transforms <var>file</var> in-place.
      *   </dd>
-     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file-or-dir</var> <var>new-file-or-dir</var></dt>
+     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file1</var> <var>file2</var></dt>
      *   <dd>
-     *     Read the YAML documents in <var>file-or-dir</var>, modify them, and write them to <var>new-file-or-dir</var>.
+     *     Read the YAML documents in <var>file1</var>, modify them, and write them to (existing or new) <var>file2</var>.
      *   </dd>
-     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file-or-dir</var> ... <var>existing-dir</var></dt>
+     *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file</var> ... <var>existing-dir</var></dt>
      *   <dd>
-     *     Read the YAML documents in <var>file-or-dir</var>, modify them, and write them to files/dirs in <var>existing-dir</var>.
+     *     Read the YAML document in each <var>file</var>, modify it, and write it to a file in <var>existing-dir</var>.
      *   </dd>
      * </dl>
      *
