@@ -1,0 +1,166 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  </head>
+  <body>
+A command line utility that modifies YAML documents.
+<h2>Usage</h2>
+<dl>
+  <dt><code>yamlpatch</code> [ <var>option</var> ... ]</dt>
+  <dd>
+    Parse a YAML document from STDIN, modify it, and print it to STDOUT.
+  </dd>
+  <dt><code>yamlpatch</code> [ <var>option</var> ... ] !<var>yaml-document</var></dt>
+  <dd>
+    Parse the literal <var>YAML-document</var>, modify it, and print it to STDOUT.
+  </dd>
+  <dt><code>yamlpatch</code> [ <var>option</var> ] <var>file</var></dt>
+  <dd>
+    Transform the YAML document in <var>file</var> in-place.
+  </dd>
+  <dt><code>yamlpatch</code> [ <var>option</var> ] <var>file1</var> <var>file2</var></dt>
+  <dd>
+    Read the YAML document in <var>file1</var>, modify it, and write it to (existing or new) <var>file2</var>.
+  </dd>
+  <dt><code>yamlpatch</code> [ <var>option</var> ] <var>file</var> ... <var>existing-dir</var></dt>
+  <dd>
+    Read the YAML document in each <var>file</var>, modify it, and write it to a file in <var>existing-dir</var>.
+  </dd>
+</dl>
+
+<h2>Options:</h2>
+
+<h3>General</h3>
+<dl>
+<dt><code>--help</code></dt>
+<dd>
+  Print this text and terminate.
+</dd>
+
+</dl>
+
+<h3>File processing</h3>
+<dl>
+<dt><code>--keep</code></dt>
+<dd>
+  For in-place transformations, keep copies of the originals
+</dd>
+
+</dl>
+
+<h3>File transformation</h3>
+<dl>
+<dt><code>--set</code>            [ --existing | --non-existing ] [ --comment ] [ --prepend-map ] <var>spec</var>                 ( <var>yaml-document</var> | <code>@</code><var>file-name</var> )</dt>
+<dd>
+  Add or change one map entry or sequence element.
+<dl>
+  <dt>--existing</dt>
+  <dd>Verify that the map entry resp. sequence element already exists</dd>
+  <dt>--non-existing</dt>
+  <dd>Verify that the map entry resp. sequence element does not exist already</dd>
+  <dt>--comment</dt>
+  <dd>
+    Iff this changes an existing map entry, or an existing sequence element, add an end comment to the map resp.
+    sequence that displays the original map entry resp. sequence element
+  </dd>
+  <dt>--prepend-map</dt>
+  <dd>Add the new map entry at the beginning (instead of to the end)</dd>
+</dl>
+</dd>
+
+<dt><code>--remove</code> [ --existing ] [ --comment ] <var>spec</var></dt>
+<dd>
+  Remove one map entry, sequence element or set member.
+<dl>
+  <dt>--existing</dt>
+  <dd>Verify that the map entry resp. set member already exists</dd>
+  <dt>--comment</dt>
+  <dd>
+    Iff a map entry, sequence element or set member was removed, add an end comment to the map resp. sequence
+    resp. set that displays the removed map entry resp. sequence element resp. set member
+  </dd>
+</dl>
+</dd>
+
+<dt><code>--insert</code> <var>spec</var>    ( <var>yaml-document</var> | @<var>file-name</var> )</dt>
+<dd>
+  Insert an element into an sequence.
+</dd>
+
+<dt><code>--add</code>            [ --non-existing ] [ --prepend ] <var>spec</var></dt>
+<dd>
+  Adds a member to a set.
+
+<dl>
+  <dt>--non-existing</dt>
+  <dd>Verify that the set member does not exist already</dd>
+  <dt>--prepend</dt>
+  <dd>Add the new set member at the beginning (instead of to the end)</dd>
+</dl>
+</dd>
+
+</dl>
+
+<h3>Output generation</h3>
+<dl>
+<dt><code>--best-line-break</code> <var>value</var></dt>
+<dd>
+  CR, LF, CRLF or any other value
+</dd>
+
+<dt><code>--default-flow-style</code> <code>FLOW</code>|<code>BLOCK</code>|<code>AUTO</code></dt>
+<dd>
+  Formatting style for generated documents
+</dd>
+
+<dt><code>--strip-comments</code></dt>
+<dd>
+  Remove comments while transforming
+</dd>
+
+<dt><code>--indent</code> <var>value</var></dt>
+<dd>
+  Number of spaces for the indent in the block flow style (default 2)
+</dd>
+
+<dt><code>--indent-with-indicator</code></dt>
+<dd>
+  Add the indent for sequences to the general indent
+</dd>
+
+<dt><code>--indicator-indent</code> <var>value</var></dt>
+<dd>
+  Add the specified indent for sequence indicator in the block flow (default 0)
+</dd>
+
+<dt><code>--dont-split-lines</code></dt>
+<dd>
+  Don't split long lines
+</dd>
+
+<dt><code>--width</code> <var>value</var></dt>
+<dd>
+  Max width for literal scalars (default 80)
+</dd>
+
+</dl>
+
+<h2>Specs</h2>
+<p>
+  Many of the options specify a path from the root of the YAML document to a node, as follows:
+</p>
+<dl>
+  <dt><code>.</code><var>identifier</var></dt>
+  <dt><code>.(</code><var>yaml-document</var><code>)</code></dt>
+  <dd>Use the map entry with the given key, or the given sequence element.</dd>
+  <dt><code>[</code><var>0...sequenceSize-1</var><code>]</code></dt>
+  <dd>Use the sequence element with the given index.</dd>
+  <dt><code>[</code><var>-sequenceSize...-1</var><code>]</code></dt>
+  <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
+  <dt><code>[]</code></dt>
+  <dd>The sequence element after the last existing.</dd>
+  <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
+  <dd>Use the given set member.</dd>
+</dl>
+  </body>
+</html>
