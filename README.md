@@ -2,61 +2,42 @@
 
 Yaml-patch is a 100% pure Java command line tool that can be used to modify YAML documents.
 
-Since the document is first parsed, then manipulated and eventually stored, the original structure of the text file wrt/ white-space and comments is lost.
+yaml-patch preserves all comments in the document; optionally it also creates comments for elements that removed or changed.
 
-## Usage
-    
-<code>**yamlpatch** [ *option* ... ]</code><br>
-Parse a YAML document from STDIN, modify it, and print it to STDOUT.
+FOr the most up-to-date documentation, check the `--help` page of the tool: [yaml-patch command line help](https://aunkrig.github.io/yaml-patch/Main.main(String[]).html)
 
-<code>**yamlpatch** [ *option* ... ] !*yaml-document*</code><br>
-Parse the literal <YAML-document>, modify it, and print it to STDOUT.
+## Quick Start
 
-<code>**yamlpatch** [ *option* ] *file-or-dir*</code><br>
-Transforms *file-or-dir* in-place.
+Manipulating objects:
 
-<code>**yamlpatch** [ *option* ] *file-or-dir* *new-file-or-dir*</code><br>
-Read the YAML documents in *file-or-dir*, modify them, and write them to *new-file-or-dir*.
+    yamlpatch --set .path.to.key value                 # Add new or change existing object member
+    yamlpatch --set --existing .path.to.key value      # Change existing object member
+    yamlpatch --set --non-existing .path.to.key value  # Add new object member
+    yamlpatch --set --comment .path.to.key value       # Also add a comment with the previous key and value
+    yamlpatch --set --prepend-map .path.to.key value   # Add a new map entry at the beginning (instead of to the end)
 
-<code>**yamlpatch** [ *option* ] *file-or-dir* ... *existing-dir*</code><br>
-Read the YAML documents in *file-or-dir*, modify them, and write them to files/dirs in *existing-dir*.
+    yamlpatch --remove .path.to.key            # Remove object member (if the key exists)
+    yamlpatch --remove --existing .path.to.key # Remove existing object member
+    yamlpatch --remove --comment .path.to.key  # Also add a comment with the old key and value
 
-## Options
+Manipulating sequences:
 
-<code>**--help**</code><br>
-Print this text and terminate.</dd>
+    yamlpatch --set .path.to.sequence[7] value                # Change sequence element number 7 (or, iff the current length of the sequence is 7, append a new element)
+    yamlpatch --set --existing .path.to.sequence[7] value     # Change sequence element number 7
+    yamlpatch --set --non-existing .path.to.sequence[7] value # Append a new element (current length of the sequence must be 7)
+    yamlpatch --set .path.to.sequence[] value                 # Append a new element
+    yamlpatch --set .path.to.sequence[-2] value               # Change the next-to-last element (sequence must contain two or more elements)
 
-<code>**--flow-style** **FLOW**|**BLOCK**|**AUTO**</code><br>
-Output formatting; FLOW=single line, BLOCK=each item one a separate line, AUTO: in between
+    yamlpatch --remove .path.to.sequence[3]   # Remove object member (if the key exists)
+    yamlpatch --remove --comment .path.to.key # Also add a comment with the old element
 
-<code>**--keep-originals**</code><br>
-If existing files would be overwritten, keep copies of the originals
+Manipulating sets:
 
-<code>**--set** [ **--existing** | **--non-existing** ] *spec* ( *yaml-document* | **@**_file-name_ )</code><br>
-Puts an entry into a set, or changes one sequence element.
+    yamlpatch --add .path.to.set(member)                # Add set member if it does not yet exist
+    yamlpatch --set --non-existing .path.to.set(member) # Add new set member
+    yamlpatch --set --prepend-map .path.to.set(member)  # Add set member at the beginning (instead of to the end)
 
-<code>**--remove** [ **--existing** ] *spec*</code><br>
-Removes one sequence element, map entry or set member.
+    yamlpatch --remove .path.to.set(member)            # Remove set member (if the key exists)
+    yamlpatch --remove --existing .path.to.set(member) # Remove existing set member
+    yamlpatch --remove --comment .path.to.set(member)  # Also add a comment with the old member
 
-<code>**--insert** *spec* ( *yaml-document* | **@**_file-name_ )</code><br>
-Inserts an element into an sequence.
-
-<code>**--add** *spec*</code><br>
-Adds a member to a set.
-
-## Specs
-
-Many of the options specify a path from the root of the YAML document to a node, as follows:
-
-<code>**.**_identifier_</code><br>
-<code>**.(**_yaml-document_**)**</code><br>
-Use the given map entry.
-
-<code>**[**_0...sequenceSize-1_**]**</code><br>
-Use the sequence element with the given index index <n>.
-
-<code>**[**_-sequenceSize...-1_**]**</code><br>
-Use the sequence element with the given index plus _sequenceSize_.
-
-<code>**{**_yaml-document_**}**</code><br>
-Use the given set member.
