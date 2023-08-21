@@ -68,7 +68,6 @@ class TestYamlPatch {
             ""
             + "a: b\n"
             + "c: d\n"
-            + "# Hash Comment\n"
             + "e:\n"
             + "- f\n"
             + "- g\n"
@@ -86,6 +85,7 @@ class TestYamlPatch {
     testRemoveMapEntry1() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addRemove(".h.i", RemoveMode.EXISTING, true);
         assertMain((
             ""
@@ -109,6 +109,7 @@ class TestYamlPatch {
     testRemoveMapEntry2() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addRemove(".h.(\"i\")", RemoveMode.EXISTING, true);
         assertMain((
             ""
@@ -132,6 +133,7 @@ class TestYamlPatch {
     testRemoveSetMember1() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addRemove(".h.i(\"7\")", RemoveMode.EXISTING, true);
         assertMain((
             ""
@@ -155,6 +157,7 @@ class TestYamlPatch {
     testRemoveSetMember2() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addRemove(".h.i({k: l, x)x: n})", RemoveMode.EXISTING, true);
         assertMain((
             ""
@@ -178,6 +181,7 @@ class TestYamlPatch {
     testRemoveSequenceElement() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addRemove(".e[0]", RemoveMode.EXISTING, true);
         assertMain((
             ""
@@ -218,11 +222,13 @@ class TestYamlPatch {
     testChangeMapEntry() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addSet(
             ".c",
             new ScalarNode(Tag.STR, "ddd", ScalarStyle.PLAIN),
             SetMode.EXISTING,
-            true // commentOutOriginalEntry
+            true, // commentOutOriginalEntry
+            false // prependMap
         );
         assertMain((
             ""
@@ -247,11 +253,13 @@ class TestYamlPatch {
     testSequenceElement() throws Exception {
         
         YamlPatch yamlPatch = new YamlPatch();
+        yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
         yamlPatch.addSet(
             ".e[0]",
             new ScalarNode(Tag.STR, "fff", ScalarStyle.PLAIN),
             SetMode.EXISTING,
-            true // commentOutOriginalEntry
+            true, // commentOutOriginalEntry
+            false // prependMap
         );
         assertMain((
             ""
@@ -261,7 +269,7 @@ class TestYamlPatch {
             + "e:\n"
             + "- fff\n"
             + "- g\n"
-            + "#- f\n"
+            + "# - f\n"
             + "h:\n"
             + "  i: !!set\n"
             + "    j:\n"

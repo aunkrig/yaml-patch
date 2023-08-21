@@ -35,6 +35,7 @@ import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+import org.snakeyaml.engine.v2.common.FlowStyle;
 import org.snakeyaml.engine.v2.nodes.Node;
 
 import de.unkrig.commons.file.ExceptionHandler;
@@ -44,13 +45,16 @@ import de.unkrig.commons.util.CommandLineOptionException;
 import de.unkrig.commons.util.CommandLineOptions;
 import de.unkrig.commons.util.annotation.CommandLineOption;
 import de.unkrig.commons.util.annotation.CommandLineOption.Cardinality;
+import de.unkrig.zz.yamlpatch.YamlPatch.AddMode;
 import de.unkrig.zz.yamlpatch.YamlPatch.RemoveMode;
 import de.unkrig.zz.yamlpatch.YamlPatch.SetMode;
 
 public
 class Main {
 
+    private boolean         keepOriginals;
     private final YamlPatch yamlPatch = new YamlPatch();
+    { this.yamlPatch.getDumpSettingsBuilder().setDumpComments(true); }
 
     /**
      * Print this text and terminate.
@@ -65,30 +69,84 @@ class Main {
 
     /**
      * For in-place transformations, keep copies of the originals
+     * 
+     * @main.commandLineOptionGroup File-Processing
      */
     @CommandLineOption public void
-    setKeepOriginals() { this.yamlPatch.setKeepOriginals(true); }
+    keep() { this.keepOriginals = true; }
 
+    // =============================== DumpSettingsBuider settings. ===============================
+
+    /**
+     * CR, LF, CRLF or any other value
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setBestLineBreak(String value) { this.yamlPatch.getDumpSettingsBuilder().setBestLineBreak((
+        "CR".equals(value) ? "\r" :
+        "LF".equals(value) ? "\n" :
+        "CRLF".equals(value) ? "\r\n" :
+        value
+    )); }
+    /**
+     * Formatting style for generated documents
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setDefaultFlowStyle(FlowStyle value) { this.yamlPatch.getDumpSettingsBuilder().setDefaultFlowStyle(value); }
+    /**
+     * Remove comments while transforming
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setStripComments() { this.yamlPatch.getDumpSettingsBuilder().setDumpComments(false); }
+    /**
+     * Number of spaces for the indent in the block flow style (default 2)
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setIndent(int value) { this.yamlPatch.getDumpSettingsBuilder().setIndent(value); }
+    /**
+     * Add the indent for sequences to the general indent
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setIndentWithIndicator() { this.yamlPatch.getDumpSettingsBuilder().setIndentWithIndicator(true); }
+    /**
+     * Add the specified indent for sequence indicator in the block flow (default 0)
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setIndicatorIndent(int value) { this.yamlPatch.getDumpSettingsBuilder().setIndicatorIndent(value); }
+    /**
+     * Don't split long lines
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setDontSplitLines() { this.yamlPatch.getDumpSettingsBuilder().setSplitLines(false); }
+    /**
+     * Max width for literal scalars (default 80)
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setWidth(int value) { this.yamlPatch.getDumpSettingsBuilder().setWidth(value); }
+
+    // =============================== End DumpSettingsBuider settings. ===============================
+
+    /**
+     * Helper bean for {@link Main#addSet(SetOptions, String, String)}.
+     */
     public static
     class SetOptions {
 
         public SetMode mode = SetMode.ANY;
         public boolean commentOutOriginalEntry;
+        public boolean prependMap;
 
-        /**
-         * The map entry or sequence element affected by the operation must exist (and is replaced).
-         */
-        @CommandLineOption public void setExisting()    { this.mode = SetMode.EXISTING; }
-        
-        /**
-         * The map entry or sequence element affected by the operation must not exist (and is created).
-         */
-        @CommandLineOption public void setNonExisting() { this.mode = SetMode.NON_EXISTING; }
-
-        /**
-         * Add a comment for the original map entry resp. sequence element.
-         */
-        @CommandLineOption public void comment() { this.commentOutOriginalEntry = true; }
+        @CommandLineOption public void existing()    { this.mode = SetMode.EXISTING; }
+        @CommandLineOption public void nonExisting() { this.mode = SetMode.NON_EXISTING; }
+        @CommandLineOption public void comment()     { this.commentOutOriginalEntry = true; }
+        @CommandLineOption public void prependMap()  { this.prependMap = true; }
     }
 
     /**
@@ -103,35 +161,34 @@ class Main {
      *     Iff this changes an existing map entry, or an existing sequence element, add an end comment to the map resp.
      *     sequence that displays the original map entry resp. sequence element
      *   </dd>
+     *   <dt>--prepend-map</dt>
+     *   <dd>Add the new map entry at the beginning (instead of to the end)</dd>
      * </dl>
      * 
-     * @param value      ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
-     * @param setOptions [ --existing | --non-existing ] [ --comment ]
+     * @param setOptions            [ --existing | --non-existing ] [ --comment ] [ --prepend-map ]
+     * @param value                 ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
+     * @main.commandLineOptionGroup File-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addSet(SetOptions setOptions, String spec, String value) throws IOException {
-        this.yamlPatch.addSet(spec, Main.yamlDocumentOrFile(value), setOptions.mode, setOptions.commentOutOriginalEntry);
+        this.yamlPatch.addSet(spec, Main.yamlDocumentOrFile(value), setOptions.mode, setOptions.commentOutOriginalEntry, setOptions.prependMap);
     }
 
+    /**
+     * Helper bean for {@link Main#addRemove(RemoveOptions, String)}.
+     */
     public static
     class RemoveOptions {
 
         public RemoveMode mode = RemoveMode.ANY;
         public boolean    commentOutOriginalEntry;
 
-        /**
-         * The specified map entry must exist.
-         */
-        @CommandLineOption public void setExisting() { this.mode = RemoveMode.EXISTING; }
-
-        /**
-         * Add a comment for the removed map entry, sequence element or set member
-         */
-        @CommandLineOption public void comment() { this.commentOutOriginalEntry = true; }
+        @CommandLineOption public void existing() { this.mode = RemoveMode.EXISTING; }
+        @CommandLineOption public void comment()  { this.commentOutOriginalEntry = true; }
     }
 
     /**
-     * Removes one sequence element, map entry or set member.
+     * Remove one map entry, sequence element or set member.
      * <dl>
      *   <dt>--existing</dt>
      *   <dd>Verify that the map entry resp. set member already exists</dd>
@@ -142,7 +199,8 @@ class Main {
      *   </dd>
      * </dl>
      * 
-     * @param removeOptions [ --existing ] [ --comment ]
+     * @param                       removeOptions [ --existing ] [ --comment ]
+     * @main.commandLineOptionGroup File-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addRemove(RemoveOptions removeOptions, String spec) throws IOException {
@@ -150,21 +208,46 @@ class Main {
     }
 
     /**
-     * Inserts an element into an sequence.
+     * Insert an element into an sequence.
      * 
-     * @param yamlDocumentOrFile ( <var>yaml-document</var> | '@'<var>file-name</var> )
+     * @param yamlDocumentOrFile    ( <var>yaml-document</var> | @<var>file-name</var> )
+     * @main.commandLineOptionGroup File-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addInsert(String spec, String yamlDocumentOrFile) throws IOException {
         this.yamlPatch.addInsert(spec, Main.yamlDocumentOrFile(yamlDocumentOrFile));
     }
-    
+
+    /**
+     * Helper bean for {@link Main#addAdd(AddOptions, String)}.
+     */
+    public static
+    class AddOptions {
+
+        public AddMode mode = AddMode.ANY;
+        public boolean prepend;
+
+        @CommandLineOption public void nonExisting() { this.mode = AddMode.NON_EXISTING; }
+        @CommandLineOption public void prepend()     { this.prepend = true; }
+    }
+
     /**
      * Adds a member to a set.
+     *
+     * <dl>
+     *   <dt>--non-existing</dt>
+     *   <dd>Verify that the set member does not exist already</dd>
+     *   <dt>--prepend</dt>
+     *   <dd>Add the new set member at the beginning (instead of to the end)</dd>
+     * </dl>
+     * 
+     * @param value                 ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
+     * @param addOptions            [ --non-existing ] [ --prepend ]
+     * @main.commandLineOptionGroup File-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
-    addAdd(String spec) throws IOException {
-        this.yamlPatch.addAdd(spec);
+    addAdd(AddOptions addOptions, String spec) throws IOException {
+        this.yamlPatch.addAdd(spec, addOptions.mode, addOptions.prepend);
     }
 
     public static Node
@@ -198,11 +281,11 @@ class Main {
      *   </dd>
      *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file</var></dt>
      *   <dd>
-     *     Transforms <var>file</var> in-place.
+     *     Transform the YAML document in <var>file</var> in-place.
      *   </dd>
      *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file1</var> <var>file2</var></dt>
      *   <dd>
-     *     Read the YAML documents in <var>file1</var>, modify them, and write them to (existing or new) <var>file2</var>.
+     *     Read the YAML document in <var>file1</var>, modify it, and write it to (existing or new) <var>file2</var>.
      *   </dd>
      *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file</var> ... <var>existing-dir</var></dt>
      *   <dd>
@@ -210,10 +293,26 @@ class Main {
      *   </dd>
      * </dl>
      *
-     * <h2>Options</h2>
+     * <h2>Options:</h2>
      *
+     * <h3>General</h3>
      * <dl>
      * {@main.commandLineOptions}
+     * </dl>
+     *
+     * <h3>File processing</h3>
+     * <dl>
+     * {@main.commandLineOptions File-Processing}
+     * </dl>
+     *
+     * <h3>File transformation</h3>
+     * <dl>
+     * {@main.commandLineOptions File-Transformation}
+     * </dl>
+     *
+     * <h3>Output generation</h3>
+     * <dl>
+     * {@main.commandLineOptions Output-Generation}
      * </dl>
      *
      * <h2>Specs</h2>
@@ -223,11 +322,13 @@ class Main {
      * <dl>
      *   <dt>{@code .}<var>identifier</var></dt>
      *   <dt>{@code .(}<var>yaml-document</var>{@code )}</dt>
-     *   <dd>Use the given map entry.</dd>
+     *   <dd>Use the map entry with the given key, or the given sequence element.</dd>
      *   <dt>{@code [}<var>0...sequenceSize-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index.</dd>
      *   <dt>{@code [}<var>-sequenceSize...-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
+     *   <dt>{@code []}</dt>
+     *   <dd>The sequence element after the last existing.</dd>
      *   <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
      *   <dd>Use the given set member.</dd>
      * </dl>
@@ -253,10 +354,10 @@ class Main {
 
             // Transform a set of files.
             FileTransformations.transform(
-                args,                             // args
-                main.yamlPatch.fileTransformer(), // fileTransformer
-                Mode.TRANSFORM,                   // mode
-                ExceptionHandler.defaultHandler() // exceptionHandler
+                args,                                               // args
+                main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
+                Mode.TRANSFORM,                                     // mode
+                ExceptionHandler.defaultHandler()                   // exceptionHandler
             );
         }
     }

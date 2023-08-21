@@ -23,8 +23,8 @@
 	<dependencies>
 		<dependency><groupId>org.snakeyaml</groupId><artifactId>snakeyaml-engine</artifactId><version>2.6</version></dependency>
 
-		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-file</artifactId><version>1.2.18</version></dependency>
-		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-nullanalysis</artifactId><version>1.2.18</version></dependency>
+		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-file</artifactId><version>1.2.19-SNAPSHOT</version></dependency>
+		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-nullanalysis</artifactId><version>1.2.19-SNAPSHOT</version></dependency>
 	</dependencies>
 
 <!-- 

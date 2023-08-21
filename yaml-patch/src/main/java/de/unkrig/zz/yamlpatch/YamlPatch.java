@@ -41,11 +41,13 @@ import java.util.regex.Pattern;
 
 import org.snakeyaml.engine.v2.api.Dump;
 import org.snakeyaml.engine.v2.api.DumpSettings;
+import org.snakeyaml.engine.v2.api.DumpSettingsBuilder;
 import org.snakeyaml.engine.v2.api.LoadSettings;
 import org.snakeyaml.engine.v2.api.YamlOutputStreamWriter;
 import org.snakeyaml.engine.v2.api.lowlevel.Compose;
 import org.snakeyaml.engine.v2.comments.CommentLine;
 import org.snakeyaml.engine.v2.comments.CommentType;
+import org.snakeyaml.engine.v2.common.FlowStyle;
 import org.snakeyaml.engine.v2.common.ScalarStyle;
 import org.snakeyaml.engine.v2.composer.Composer;
 import org.snakeyaml.engine.v2.nodes.CollectionNode;
@@ -74,18 +76,22 @@ class YamlPatch {
         AssertionUtil.enableAssertionsForThisClass();
     }
 
-    private boolean                             keepOriginals;
+    private final DumpSettingsBuilder           dumpSettingsBuilder = DumpSettings.builder();
     private final List<Transformer<Node, Node>> documentModifiers = new ArrayList<>();
 
-    public void
-    setKeepOriginals(boolean value) { this.keepOriginals = value; }
+    /**
+     * @return The modifiable {@link DumpSettingsBuilder} that will take effect for the next {@link #transform(Reader,
+     *         OutputStream)} operation
+     */
+    public DumpSettingsBuilder
+    getDumpSettingsBuilder() { return this.dumpSettingsBuilder; }
 
     /**
-     * @see #set(Node, String, Node, SetMode, boolean)
+     * @see #set(Node, String, Node, SetMode, boolean, boolean)
      */
     public void
-    addSet(String spec, Node value, SetMode mode, boolean commentOutOriginalEntry) throws IOException {
-        this.documentModifiers.add(root -> this.set(root, spec, value, mode, commentOutOriginalEntry));
+    addSet(String spec, Node value, SetMode mode, boolean commentOutOriginalEntry, boolean prependMap) throws IOException {
+        this.documentModifiers.add(root -> this.set(root, spec, value, mode, commentOutOriginalEntry, prependMap));
     }
     public static enum SetMode { ANY, EXISTING, NON_EXISTING }
 
@@ -107,12 +113,13 @@ class YamlPatch {
     }
     
     /**
-     * @see #add(Node, String)
+     * @see #add(Node, String, AddMode, boolean, boolean)
      */
     public void
-    addAdd(String spec) throws IOException {
-        this.documentModifiers.add(root -> this.add(root, spec));
+    addAdd(String spec, AddMode mode, boolean prependSet) throws IOException {
+        this.documentModifiers.add(root -> this.add(root, spec, mode, prependSet));
     }
+    public static enum AddMode { ANY, NON_EXISTING }
 
     /**
      * Adds or changes a map entry or a sequence element somewhere in a YAML document.
@@ -121,32 +128,33 @@ class YamlPatch {
      * @param commentOutOriginalEntry Iff this changes an existing map entry, or an existing sequence element, add
      *                                an end comment to the map resp. sequence that displays the original map
      *                                entry resp. sequence element
+     * @param prependMap              Add the new map entry at the beginning (instead of to the end)
      * @throws SpecMatchException     <var>mode</var> is {@code EXISTING}, and the specified map entry does not exist
      * @throws SpecMatchException     <var>mode</var> is {@code NON_EXISTING}, and the specified map entry does exist
      * @throws SpecMatchException     <var>mode</var> is {@code EXISTING}, and the specified sequence index is out of
      *                                range
      * @throws SpecMatchException     <var>mode</var> is {@code NON_EXISTING}, and the specified sequence index does
      *                                not equal the sequence size
-     * @throws SpecMatchException     The designated node is a set (use {@link #add(Node, String)} instead)
+     * @throws SpecMatchException     The designated node is a set (use {@link #add(Node, String, boolean)} instead)
      * @throws SpecMatchException     See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException    See {@link #processSpec(Node, String, SpecHandler)}
      */
     public Node
-    set(Node root, String spec, Node value, SetMode mode, boolean commentOutOriginalEntry) {
+    set(Node root, String spec, Node value, SetMode mode, boolean commentOutOriginalEntry, boolean prependMap) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler() {
 
             @Override public void
             handleMapEntry(MappingNode map, Node key) {
-                Node prev = put(map, key, value, commentOutOriginalEntry);
+                Node prev = put(map, key, value, commentOutOriginalEntry, prependMap);
                 switch (mode) {
                 case ANY:
                     break;
                 case EXISTING:
-                    if (prev == null) throw new SpecMatchException("Entry key \"" + dump(key, false) + "\" does not exist");
+                    if (prev == null) throw new SpecMatchException("Entry key \"" + YamlPatch.toString(key) + "\" does not exist");
                     break;
                 case NON_EXISTING:
-                    if (prev != null) throw new SpecMatchException("Entry key \"" + dump(key, false) + "\" already exists");
+                    if (prev != null) throw new SpecMatchException("Entry key \"" + YamlPatch.toString(key) + "\" already exists");
                     break;
                 }
             }
@@ -173,10 +181,7 @@ class YamlPatch {
                         List<CommentLine> ecs = sequence.getEndComments();
                         if (ecs == null) sequence.setEndComments((ecs = new ArrayList<>()));
                         
-                        SequenceNode tmp = new SequenceNode(Tag.SEQ, List.of(prev), sequence.getFlowStyle());
-                        for (String line : dump(tmp, false).split("\\r?\\n")) {
-                            ecs.add(new CommentLine(Optional.empty(), Optional.empty(), line, CommentType.BLOCK));
-                        }
+                        addNodeAsComments(new SequenceNode(Tag.SEQ, List.of(prev), sequence.getFlowStyle()), ecs);
                     }
                 }
             }
@@ -211,7 +216,7 @@ class YamlPatch {
 
             @Override public void
             handleMapEntry(MappingNode map, Node key) {
-                if (remove(map, key, commentOutOriginalEntry) == null && mode == RemoveMode.EXISTING) throw new SpecMatchException("Key \"" + dump(key, false) + "\" does not exist");
+                if (remove(map, key, commentOutOriginalEntry) == null && mode == RemoveMode.EXISTING) throw new SpecMatchException("Key \"" + YamlPatch.toString(key) + "\" does not exist");
             }
             
             @Override public void
@@ -222,7 +227,7 @@ class YamlPatch {
 
             @Override public void
             handleSetMember(MappingNode set, Node member) {
-                if (remove(set, member, commentOutOriginalEntry) == null && mode == RemoveMode.EXISTING) throw new SpecMatchException("Member \"" + dump(member, false) + "\" does not exist");
+                if (remove(set, member, commentOutOriginalEntry) == null && mode == RemoveMode.EXISTING) throw new SpecMatchException("Member \"" + YamlPatch.toString(member) + "\" does not exist");
             }
         });
 
@@ -266,12 +271,13 @@ class YamlPatch {
      * Adds a member to a set somewhere in a YAML document.
      *
      * @param spec                 Specifies the set within the document and the value to add
+     * @param prependSet           Add the member at the beginning of the set (instead of to the end)
      * @throws SpecMatchException  The <var>spec</var> specified a map or a sequence (and not a set)
      * @throws SpecMatchException  See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException See {@link #processSpec(Node, String, SpecHandler)}
      */
     public Node
-    add(Node root, String spec) {
+    add(Node root, String spec, AddMode mode, boolean prependSet) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler() {
 
@@ -287,7 +293,20 @@ class YamlPatch {
 
             @Override public void
             handleSetMember(MappingNode set, Node member) {
-                put(set, member, new ScalarNode(null, "null", ScalarStyle.PLAIN), false);
+                Node prev = put(
+                    set,
+                    member,
+                    new ScalarNode(null, "null", ScalarStyle.PLAIN),
+                    false,                                           // commentOutOriginalEntry (does not make sense for sets)
+                    prependSet                                       // prependMap
+                );
+                switch (mode) {
+                case ANY:
+                    break;
+                case NON_EXISTING:
+                    if (prev != null) throw new SpecMatchException("Set member \"" + YamlPatch.toString(member) + "\" already exists");
+                    break;
+                }
             }
         });
         return root;
@@ -301,7 +320,7 @@ class YamlPatch {
      * @return                        The previous value, or {@code null} iff entry with the given key does not exist
      */
     @Nullable static Node
-    put(MappingNode map, Node key, Node value, boolean commentOutOriginalEntry) {
+    put(MappingNode map, Node key, Node value, boolean commentOutOriginalEntry, boolean prependMap) {
         List<NodeTuple> entries = map.getValue();
         for (int index = 0; index < entries.size(); index++) {
             NodeTuple nt = entries.get(index);
@@ -312,17 +331,28 @@ class YamlPatch {
                     List<CommentLine> bcs = key.getBlockComments();
                     if (bcs == null) key.setBlockComments((bcs = new ArrayList<CommentLine>()));
 
-                    MappingNode tmp = new MappingNode(Tag.MAP, List.of(nt), map.getFlowStyle());
-                    for (String line : dump(tmp, false).split("\\r?\\n")) {
-                        bcs.add(new CommentLine(Optional.empty(), Optional.empty(), " " + line, CommentType.BLOCK));
-                    }
+                    addNodeAsComments(new MappingNode(Tag.MAP, List.of(nt), map.getFlowStyle()), bcs);
                 }
                 entries.set(index, new NodeTuple(key, value));
                 return result;
             }
         }
-        entries.add(new NodeTuple(key, value));
+        if (prependMap) {
+            entries.add(0, new NodeTuple(key, value));
+        } else {
+            entries.add(new NodeTuple(key, value));
+        }
         return null;
+    }
+
+    /**
+     * Adds a series of block comments to the <var>result</var> that resemble the original <var>node</var>.
+     */
+    private static void
+    addNodeAsComments(Node node, List<CommentLine> result) {
+        for (String line : dumpNoComments(node).split("\\r?\\n")) {
+            result.add(new CommentLine(Optional.empty(), Optional.empty(), " " + line, CommentType.BLOCK));
+        }
     }
 
     /**
@@ -345,9 +375,7 @@ class YamlPatch {
                     List<CommentLine> ecs = map.getEndComments();
                     if (ecs == null)  map.setEndComments((ecs = new ArrayList<CommentLine>()));
                     MappingNode tmp = new MappingNode(Tag.MAP, List.of(nt), map.getFlowStyle());
-                    for (String line : dump(tmp, false).split("\\r?\\n")) {
-                        ecs.add(new CommentLine(Optional.empty(), Optional.empty(), " " + line, CommentType.BLOCK));
-                    }
+                    addNodeAsComments(tmp, ecs);
                 }
                 return result;
             }
@@ -371,10 +399,7 @@ class YamlPatch {
             List<CommentLine> bcs = sequence.getEndComments();
             if (bcs == null) sequence.setEndComments((bcs = new ArrayList<CommentLine>()));
 
-            SequenceNode tmp = new SequenceNode(Tag.SEQ, List.of(result), sequence.getFlowStyle());
-            for (String line : dump(tmp, false).split("\\r?\\n")) {
-                bcs.add(new CommentLine(Optional.empty(), Optional.empty(), " " + line, CommentType.BLOCK));
-            }
+            addNodeAsComments(new SequenceNode(Tag.SEQ, List.of(result), sequence.getFlowStyle()), bcs);
         }
         return result;
     }
@@ -398,7 +423,7 @@ class YamlPatch {
         void handleSetMember(MappingNode set, Node member);
     }
 
-    private static final Pattern MAP_ENTRY_SPEC1       = Pattern.compile("\\.([A-Za-z0-9_]+)");
+    private static final Pattern MAP_ENTRY_SPEC1       = Pattern.compile("\\.([A-Za-z0-9_\\-]+)");
     private static final Pattern MAP_ENTRY_SPEC2       = Pattern.compile("\\.\\((.*)");
     private static final Pattern SEQUENCE_ELEMENT_SPEC = Pattern.compile("\\[(-?\\d*)]");
     private static final Pattern SET_MEMBER_SPEC       = Pattern.compile("\\(");
@@ -425,9 +450,6 @@ class YamlPatch {
                     (m = MAP_ENTRY_SPEC1.matcher(s)).lookingAt()     // .<identifier>
                     || (m = MAP_ENTRY_SPEC2.matcher(s)).lookingAt()  // .(<yaml-document>)
                 ) {
-                    
-                    if (el.getNodeType() != NodeType.MAPPING) throw new SpecMatchException("Element is not a map");
-                    MappingNode yamlMap = (MappingNode) el;
 
                     Node key;
                     if (m.pattern() == MAP_ENTRY_SPEC1) {
@@ -437,27 +459,52 @@ class YamlPatch {
                     if (m.pattern() == MAP_ENTRY_SPEC2) {
                         s.delete(0, 2);
                         key = YamlPatch.loadFirst(s);
-                        if (s.length() == 0 || s.charAt(0) != ')') throw new SpecSyntaxException("Closing parenthesis missing after map key \"" + dump(key, false) + "\"");
+                        if (s.length() == 0 || s.charAt(0) != ')') throw new SpecSyntaxException("Closing parenthesis missing after map key \"" + toString(key) + "\"");
                         s.delete(0, 1);
                     } else
                     {
                         throw new AssertionError(m.pattern());
                     }
-
-                    if (s.length() == 0) {
-                        specHandler.handleMapEntry(yamlMap, key);
-                        return;
-                    }
-
-                    for (NodeTuple nt : yamlMap.getValue()) {
-                        if (equals(nt.getKeyNode(), key)) {
-                            el = nt.getValueNode();
-                            continue SPEC;
+                    
+                    if (el.getNodeType() == NodeType.MAPPING) {
+                        MappingNode yamlMap = (MappingNode) el;
+                        
+                        if (s.length() == 0) {
+                            specHandler.handleMapEntry(yamlMap, key);
+                            return;
                         }
+                        
+                        for (NodeTuple nt : yamlMap.getValue()) {
+                            if (equals(nt.getKeyNode(), key)) {
+                                el = nt.getValueNode();
+                                continue SPEC;
+                            }
+                        }
+                    } else
+                    if (el.getNodeType() == NodeType.SEQUENCE) {
+                        SequenceNode yamlSequence = (SequenceNode) el;
+
+                        List<Node> elements = yamlSequence.getValue();
+                        for (int index = 0; index < elements.size(); index++) {
+                            Node sequenceElement = elements.get(index);
+                            if (equals(sequenceElement, key)) {
+                                if (s.length() == 0) {
+                                    specHandler.handleSequenceElement(yamlSequence, index);
+                                    return;
+                                }
+                                
+                                el = sequenceElement;
+                                continue SPEC;
+                            }
+                        }
+                        throw new SpecMatchException("Sequence does not contain an element \"" + toString(key) + "\"");
+                    } else
+                    {
+                        throw new SpecMatchException("Element is not a map nor a sequence");
                     }
-                    throw new SpecMatchException("Map does not contain key \"" + dump(key, false) + "\"");
+                    throw new SpecMatchException("Map does not contain key \"" + toString(key) + "\"");
                 } else
-                if ((m = SEQUENCE_ELEMENT_SPEC.matcher(s)).lookingAt()) {  // [<integer>]
+                if ((m = SEQUENCE_ELEMENT_SPEC.matcher(s)).lookingAt()) {  // [<integer>], []
 
                     if (el.getNodeType() != NodeType.SEQUENCE) throw new SpecMatchException("Element is not a sequence");
                     SequenceNode yamlSequence = (SequenceNode) el;
@@ -479,7 +526,7 @@ class YamlPatch {
 
                     s.delete(0, 1);
                     Node member = YamlPatch.loadFirst(s);
-                    if (s.length() == 0 || s.charAt(0) != ')') throw new SpecSyntaxException("Closing parenthesis missing after member \"" + dump(member, false) + "\"");
+                    if (s.length() == 0 || s.charAt(0) != ')') throw new SpecSyntaxException("Closing parenthesis missing after member \"" + toString(member) + "\"");
                     if (s.length() > 1) throw new SpecSyntaxException("Member spec must be terminal");
 
                     if (el.getNodeType() != NodeType.MAPPING) throw new SpecMatchException("Element is not a set");
@@ -493,7 +540,7 @@ class YamlPatch {
                 }
             } catch (RuntimeException e) {
                 throw ExceptionUtil.wrap(
-                    "Applying spec \"" + spec + "\" at offset " + (spec.length() - s.length()) + " on \"" + dump(el, false) + "\"",
+                    "Applying spec \"" + spec + "\" at offset " + (spec.length() - s.length()) + " on \"" + toString(el) + "\"",
                     e
                 );
             }
@@ -523,9 +570,6 @@ class YamlPatch {
             
             @Override public void
             transform(String path, InputStream is, OutputStream os) throws IOException {
-
-//                for(;;) System.err.println(System.in.read());
-
                 InputStreamReader r = new InputStreamReader(is, StandardCharsets.UTF_8);
                 
                 YamlPatch.this.transform(r, os);
@@ -534,8 +578,8 @@ class YamlPatch {
     }
 
     public FileTransformer
-    fileTransformer() {
-        return new FileContentsTransformer(this.contentsTransformer(), this.keepOriginals);
+    fileTransformer(boolean keepOriginals) {
+        return new FileContentsTransformer(this.contentsTransformer(), keepOriginals);
     }
 
     /**
@@ -613,47 +657,58 @@ class YamlPatch {
     }
 
     /**
+     * @return The YAML document in "FLOW" (single-line) style; useful e.g. for generating error messages
+     */
+    public static String
+    toString(Node node) {
+        String result = toString(node, DumpSettings.builder().setDefaultFlowStyle(FlowStyle.FLOW).build());
+        result = result.trim();
+        if (result.length() > 30) result = result.substring(0, 20) + "...";
+        return result;
+    }
+
+    /**
+     * @return The YAML document
+     */
+    private static String
+    toString(Node node, DumpSettings dumpSettings) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        new Dump(dumpSettings).dumpNode(node, new YamlOutputStreamWriter(baos, StandardCharsets.UTF_8) {
+   
+            @Override public void
+            processIOException(@Nullable IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        });
+        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+    /**
      * @return The given <var>node</var>, formatted in its original flow style, including comments
      */
     public static String
     dump(Node node) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        dump(node, baos);
-        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+        return toString(node, DumpSettings.builder().setDumpComments(true).build());
     }
-
+    
     /**
-     * @return The given <var>node</var>, formatted in its original flow style, optionally including comments
+     * @return The given <var>node</var>, formatted in its original flow style, but without any comments
      */
     public static String
-    dump(Node node, boolean dumpComments) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        dump(node, baos, dumpComments);
-        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    dumpNoComments(Node node) {
+        return toString(node, DumpSettings.builder().build());
     }
 
     /**
-     * Writes the given <var>node</var> to the given {@link OutputStream}, in its original flow style, including
-     * comments.
+     * Writes the given <var>node</var> to the given {@link OutputStream}, as configured by the {@link
+     * #getDumpSettingsBuilder()}
+     * 
+     * @see DumpSettingsBuilder
      */
-    public static void
+    public void
     dump(Node node, OutputStream out) {
-        dump(node, out, true);
-    }
 
-    /**
-     * Writes the given <var>node</var> to the given {@link OutputStream}, in its original flow style, optionally
-     * including comments.
-     */
-    public static void
-    dump(Node node, OutputStream out, boolean dumpComments) {
-
-        DumpSettings dumpSettings = (
-            DumpSettings.builder()
-            .setDumpComments(dumpComments)
-            .build()
-        );
-        Dump dump = new Dump(dumpSettings);
+        Dump dump = new Dump(this.dumpSettingsBuilder.build());
 
         dump.dumpNode(node, new YamlOutputStreamWriter(out, StandardCharsets.UTF_8) {
    
