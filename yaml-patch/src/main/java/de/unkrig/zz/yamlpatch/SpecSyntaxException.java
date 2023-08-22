@@ -27,7 +27,7 @@
 package de.unkrig.zz.yamlpatch;
 
 public
-class SpecSyntaxException extends RuntimeException{
+class SpecSyntaxException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
