@@ -1,8 +1,8 @@
 # Yaml-patch
 
-Yaml-patch is a 100% pure Java command line tool that can be used to modify YAML documents.
+Yaml-patch is a 100% pure Java command line tool for modifying YAML documents.
 
-yaml-patch preserves all comments in the document; optionally it also creates comments for elements that were removed or changed.
+Yaml-patch preserves all comments and formatting in the document; optionally it also creates comments for elements that were removed or changed.
 
 ## Documentation
 
