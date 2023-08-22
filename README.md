@@ -1,10 +1,12 @@
-# YAML-PATCH
+# Yaml-patch
 
 Yaml-patch is a 100% pure Java command line tool that can be used to modify YAML documents.
 
-yaml-patch preserves all comments in the document; optionally it also creates comments for elements that removed or changed.
+yaml-patch preserves all comments in the document; optionally it also creates comments for elements that were removed or changed.
 
-FOr the most up-to-date documentation, check the `--help` page of the tool: [yaml-patch command line help](https://aunkrig.github.io/yaml-patch/Main.main(String[]).html)
+## Documentation
+
+For the most up-to-date documentation, check the `--help` page of the tool: [yaml-patch command line help](https://aunkrig.github.io/yaml-patch/Main.main(String[]).html)
 
 ## Quick Start
 
@@ -22,22 +24,33 @@ Manipulating objects:
 
 Manipulating sequences:
 
-    yamlpatch --set .path.to.sequence[7] value                # Change sequence element number 7 (or, iff the current length of the sequence is 7, append a new element)
-    yamlpatch --set --existing .path.to.sequence[7] value     # Change sequence element number 7
-    yamlpatch --set --non-existing .path.to.sequence[7] value # Append a new element (current length of the sequence must be 7)
     yamlpatch --set .path.to.sequence[] value                 # Append a new element
+    yamlpatch --set .path.to.sequence[7] value                # Change 8th element (or, iff the current length of the sequence is 7, append a new element)
+    yamlpatch --set --existing .path.to.sequence[7] value     # Change 8th element
+    yamlpatch --set --non-existing .path.to.sequence[7] value # Append a new element (current length of the sequence must be 7)
     yamlpatch --set .path.to.sequence[-2] value               # Change the next-to-last element (sequence must contain two or more elements)
 
-    yamlpatch --remove .path.to.sequence[3]   # Remove object member (if the key exists)
-    yamlpatch --remove --comment .path.to.key # Also add a comment with the old element
+    yamlpatch --remove .path.to.sequence[3]           # Remove 4th element
+    yamlpatch --remove .path.to.sequence[-2]          # Remove next-to-last element (sequence must contain two or more elements)
+    yamlpatch --remove .path.to.sequence.alpha        # Remove sequence element by value
+    yamlpatch --remove .path.to.sequence.({a: b})     # Remove sequence element by (complex) value
+    yamlpatch --remove --comment .path.to.sequence[3] # Also add a comment with the old element
 
 Manipulating sets:
 
-    yamlpatch --add .path.to.set(member)                # Add set member if it does not yet exist
-    yamlpatch --set --non-existing .path.to.set(member) # Add new set member
-    yamlpatch --set --prepend-map .path.to.set(member)  # Add set member at the beginning (instead of to the end)
+    path:
+      to:
+        set: !!set
+          ? red
+          ? green
+          ? blue
 
-    yamlpatch --remove .path.to.set(member)            # Remove set member (if the key exists)
-    yamlpatch --remove --existing .path.to.set(member) # Remove existing set member
-    yamlpatch --remove --comment .path.to.set(member)  # Also add a comment with the old member
+    yamlpatch --add                '.path.to.set.brown'    # Add set member if it does not yet exist
+    yamlpatch --set --non-existing '.path.to.set.brown'    # Add new set member
+    yamlpatch --set --prepend      '.path.to.set.brown'    # Add set member at the beginning (instead of to the end)
+    yamlpatch --add                '.path.to.set.({a: b})' # Add complex set member
+
+    yamlpatch --remove .path.to.set.red            # Remove member (if the key exists)
+    yamlpatch --remove --existing .path.to.set.red # Remove existing member
+    yamlpatch --remove --comment .path.to.set.red  # Also add a comment with the removed member
 
