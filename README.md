@@ -46,8 +46,8 @@ Manipulating sets:
           ? blue
 
     yamlpatch --add                '.path.to.set.brown'    # Add member "brown" if it does not yet exist
-    yamlpatch --set --non-existing '.path.to.set.brown'    # Add new member "brown"
-    yamlpatch --set --prepend      '.path.to.set.brown'    # Add member at the beginning (instead of to the end)
+    yamlpatch --add --non-existing '.path.to.set.brown'    # Add new member "brown"
+    yamlpatch --add --prepend      '.path.to.set.brown'    # Add member at the beginning (instead of to the end)
     yamlpatch --add                '.path.to.set.({a: b})' # Add a complex member
 
     yamlpatch --remove            .path.to.set.red  # Remove member "red" (if the key exists)
