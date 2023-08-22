@@ -113,7 +113,7 @@ class YamlPatch {
     }
     
     /**
-     * @see #add(Node, String, AddMode, boolean, boolean)
+     * @see #add(Node, String, AddMode, boolean)
      */
     public void
     addAdd(String spec, AddMode mode, boolean prependSet) throws IOException {
@@ -135,7 +135,6 @@ class YamlPatch {
      *                                range
      * @throws SpecMatchException     <var>mode</var> is {@code NON_EXISTING}, and the specified sequence index does
      *                                not equal the sequence size
-     * @throws SpecMatchException     The designated node is a set (use {@link #add(Node, String, boolean)} instead)
      * @throws SpecMatchException     See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException    See {@link #processSpec(Node, String, SpecHandler)}
      */
@@ -146,7 +145,7 @@ class YamlPatch {
 
             @Override public void
             handleMapEntry(MappingNode map, Node key) {
-                Node prev = put(map, key, value, commentOutOriginalEntry, prependMap);
+                Node prev = YamlPatch.put(map, key, value, commentOutOriginalEntry, prependMap);
                 switch (mode) {
                 case ANY:
                     break;
@@ -185,24 +184,18 @@ class YamlPatch {
                     }
                 }
             }
-
-            @Override public void
-            handleSetMember(MappingNode set, @Nullable Node member) {
-                throw new SpecMatchException("Cannot \"set\"; use \"add\" for yaml sets");
-            }
         });
         
         return root;
     }
 
     /**
-     * Removes one sequence element, map entry or set member somewhere in a YAML document.
+     * Removes one map entry or sequence element somewhere in a YAML document.
      * 
-     * @param spec                    Specifies the map entry, sequence element or set member within the document
+     * @param spec                    Specifies the map entry or sequence element within the document
      * @param mode                    (Irrelevant if an sequence element is specified)
-     * @param commentOutOriginalEntry Iff a map entry, sequence element or set member was removed, add an end comment
-     *                                to the map resp. sequence resp. set that displays the removed map entry resp.
-     *                                sequence element resp. set member
+     * @param commentOutOriginalEntry Iff a map entry or sequence element was removed, add an end comment to the map
+     *                                resp. sequence that displays the removed map entry resp. sequence element
      * @throws SpecMatchException     <var>mode</var> is {@code EXISTING}, and the specified map key does not exist
      * @throws SpecMatchException     The specified sequence index is out of range (-sequenceSize ... sequenceSize-1)
      * @throws SpecMatchException     <var>mode</var> is {@code EXISTING}, and the specified set member does not exist
@@ -223,11 +216,6 @@ class YamlPatch {
             handleSequenceElement(SequenceNode sequence, int index) {
                 if (index < 0 || index >= sequence.getValue().size()) throw new SpecMatchException("Sequence index " + index + " is out of range");
                 remove(sequence, index, commentOutOriginalEntry);
-            }
-
-            @Override public void
-            handleSetMember(MappingNode set, Node member) {
-                if (remove(set, member, commentOutOriginalEntry) == null && mode == RemoveMode.EXISTING) throw new SpecMatchException("Member \"" + YamlPatch.toString(member) + "\" does not exist");
             }
         });
 
@@ -250,7 +238,7 @@ class YamlPatch {
 
             @Override public void
             handleMapEntry(MappingNode map, @Nullable Node key) {
-                throw new SpecMatchException("Cannot insert into map; use SET instead");
+                throw new SpecMatchException("Cannot insert into map; use SET or ADD instead");
             }
 
             @Override public void
@@ -258,21 +246,16 @@ class YamlPatch {
                 if (index < 0 || index > sequence.getValue().size()) throw new SpecMatchException("Sequence index " + index + " is out of range");
                 sequence.getValue().add(index, sequenceElement);
             }
-
-            @Override public void
-            handleSetMember(MappingNode set, @Nullable Node member) {
-                throw new SpecMatchException("Cannot insert into set; use ADD instead");
-            }
         });
         return root;
     }
 
     /**
-     * Adds a member to a set somewhere in a YAML document.
+     * Adds a entry with no value to a map somewhere in a YAML document. (Typically used for sets.)
      *
      * @param spec                 Specifies the set within the document and the value to add
      * @param prependSet           Add the member at the beginning of the set (instead of to the end)
-     * @throws SpecMatchException  The <var>spec</var> specified a map or a sequence (and not a set)
+     * @throws SpecMatchException  The <var>spec</var> specified a sequence (and not a set or a map)
      * @throws SpecMatchException  See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException See {@link #processSpec(Node, String, SpecHandler)}
      */
@@ -282,31 +265,26 @@ class YamlPatch {
         YamlPatch.processSpec(root, spec, new SpecHandler() {
 
             @Override public void
-            handleMapEntry(MappingNode map, @Nullable Node key) {
-                throw new SpecMatchException("Cannot add to map; use SET instead");
-            }
-
-            @Override public void
-            handleSequenceElement(SequenceNode sequence, int index) {
-                throw new SpecMatchException("Cannot add to sequence; use INSERT instead");
-            }
-
-            @Override public void
-            handleSetMember(MappingNode set, Node member) {
-                Node prev = put(
-                    set,
-                    member,
-                    new ScalarNode(null, "null", ScalarStyle.PLAIN),
-                    false,                                           // commentOutOriginalEntry (does not make sense for sets)
+            handleMapEntry(MappingNode map, Node key) {
+                Node prev = YamlPatch.put(
+                    map,                                             // map
+                    key,                                             // key
+                    new ScalarNode(Tag.NULL, "", ScalarStyle.PLAIN), // value
+                    false,                                           // commentOutOriginalEntry
                     prependSet                                       // prependMap
                 );
                 switch (mode) {
                 case ANY:
                     break;
                 case NON_EXISTING:
-                    if (prev != null) throw new SpecMatchException("Set member \"" + YamlPatch.toString(member) + "\" already exists");
+                    if (prev != null) throw new SpecMatchException("Key \"" + YamlPatch.toString(key) + "\" already exists");
                     break;
                 }
+            }
+
+            @Override public void
+            handleSequenceElement(SequenceNode sequence, int index) {
+                throw new SpecMatchException("Cannot add to sequence; use INSERT instead");
             }
         });
         return root;
@@ -408,7 +386,7 @@ class YamlPatch {
     interface SpecHandler {
 
         /**
-         * Designated node is a map.
+         * Designated node is a map (maybe with Tag.SET).
          */
         void handleMapEntry(MappingNode map, Node key);
 
@@ -416,17 +394,11 @@ class YamlPatch {
          * Designated node is a sequence.
          */
         void handleSequenceElement(SequenceNode sequence, int index);
-        
-        /**
-         * Designated node is a set.
-         */
-        void handleSetMember(MappingNode set, Node member);
     }
 
     private static final Pattern MAP_ENTRY_SPEC1       = Pattern.compile("\\.([A-Za-z0-9_\\-]+)");
     private static final Pattern MAP_ENTRY_SPEC2       = Pattern.compile("\\.\\((.*)");
     private static final Pattern SEQUENCE_ELEMENT_SPEC = Pattern.compile("\\[(-?\\d*)]");
-    private static final Pattern SET_MEMBER_SPEC       = Pattern.compile("\\(");
 
     /**
      * Parses the <var>spec</var>, locates the relevant node in the <var>root</var> document, and invokes one of the
@@ -521,19 +493,6 @@ class YamlPatch {
                     el = value.get(index);
                     assert el != null;
                     s.delete(0, m.end());
-                } else
-                if ((m = SET_MEMBER_SPEC.matcher(s)).lookingAt()) {  // (<yaml-document>)
-
-                    s.delete(0, 1);
-                    Node member = YamlPatch.loadFirst(s);
-                    if (s.length() == 0 || s.charAt(0) != ')') throw new SpecSyntaxException("Closing parenthesis missing after member \"" + toString(member) + "\"");
-                    if (s.length() > 1) throw new SpecSyntaxException("Member spec must be terminal");
-
-                    if (el.getNodeType() != NodeType.MAPPING) throw new SpecMatchException("Element is not a set");
-                    MappingNode yamlSet = (MappingNode) el;
-
-                    specHandler.handleSetMember(yamlSet, member);
-                    return;
                 } else
                 {
                     throw new SpecSyntaxException("Invalid spec \"" + s + "\"");

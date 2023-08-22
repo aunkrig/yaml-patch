@@ -193,10 +193,7 @@ class Main {
      *   <dt>--existing</dt>
      *   <dd>Verify that the map entry resp. set member already exists</dd>
      *   <dt>--comment</dt>
-     *   <dd>
-     *     Iff a map entry, sequence element or set member was removed, add an end comment to the map resp. sequence
-     *     resp. set that displays the removed map entry resp. sequence element resp. set member
-     *   </dd>
+     *   <dd>Add a comment with the removed map entry, sequence element or set member</dd>
      * </dl>
      * 
      * @param                       removeOptions [ --existing ] [ --comment ]
@@ -232,7 +229,7 @@ class Main {
     }
 
     /**
-     * Adds a member to a set.
+     * Add a member to a set.
      *
      * <dl>
      *   <dt>--non-existing</dt>
@@ -241,7 +238,6 @@ class Main {
      *   <dd>Add the new set member at the beginning (instead of to the end)</dd>
      * </dl>
      * 
-     * @param value                 ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
      * @param addOptions            [ --non-existing ] [ --prepend ]
      * @main.commandLineOptionGroup File-Transformation
      */
@@ -322,15 +318,13 @@ class Main {
      * <dl>
      *   <dt>{@code .}<var>identifier</var></dt>
      *   <dt>{@code .(}<var>yaml-document</var>{@code )}</dt>
-     *   <dd>Use the map entry with the given key, or the given sequence element.</dd>
+     *   <dd>Use the map entry with the given key, or the given sequence element, or the given set member.</dd>
      *   <dt>{@code [}<var>0...sequenceSize-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index.</dd>
      *   <dt>{@code [}<var>-sequenceSize...-1</var>{@code ]}</dt>
      *   <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
      *   <dt>{@code []}</dt>
      *   <dd>The sequence element after the last existing.</dd>
-     *   <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
-     *   <dd>Use the given set member.</dd>
      * </dl>
      */
     public static void
