@@ -75,10 +75,7 @@ A command line utility that modifies YAML documents.
   <dt>--existing</dt>
   <dd>Verify that the map entry resp. set member already exists</dd>
   <dt>--comment</dt>
-  <dd>
-    Iff a map entry, sequence element or set member was removed, add an end comment to the map resp. sequence
-    resp. set that displays the removed map entry resp. sequence element resp. set member
-  </dd>
+  <dd>Add a comment with the removed map entry, sequence element or set member</dd>
 </dl>
 </dd>
 
@@ -89,7 +86,7 @@ A command line utility that modifies YAML documents.
 
 <dt><code>--add</code>            [ --non-existing ] [ --prepend ] <var>spec</var></dt>
 <dd>
-  Adds a member to a set.
+  Add a member to a set.
 
 <dl>
   <dt>--non-existing</dt>
@@ -152,15 +149,13 @@ A command line utility that modifies YAML documents.
 <dl>
   <dt><code>.</code><var>identifier</var></dt>
   <dt><code>.(</code><var>yaml-document</var><code>)</code></dt>
-  <dd>Use the map entry with the given key, or the given sequence element.</dd>
+  <dd>Use the map entry with the given key, or the given sequence element, or the given set member.</dd>
   <dt><code>[</code><var>0...sequenceSize-1</var><code>]</code></dt>
   <dd>Use the sequence element with the given index.</dd>
   <dt><code>[</code><var>-sequenceSize...-1</var><code>]</code></dt>
   <dd>Use the sequence element with the given index plus <var>sequenceSize</var>.</dd>
   <dt><code>[]</code></dt>
   <dd>The sequence element after the last existing.</dd>
-  <dt><code>(</code><var>yaml-document</var><code>)</code></dt>
-  <dd>Use the given set member.</dd>
 </dl>
   </body>
 </html>
