@@ -134,7 +134,7 @@ class TestYamlPatch {
         
         YamlPatch yamlPatch = new YamlPatch();
         yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
-        yamlPatch.addRemove(".h.i(\"7\")", RemoveMode.EXISTING, true);
+        yamlPatch.addRemove(".h.i.(\"7\")", RemoveMode.EXISTING, true);
         assertMain((
             ""
             + "a: b\n"
@@ -158,7 +158,7 @@ class TestYamlPatch {
         
         YamlPatch yamlPatch = new YamlPatch();
         yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
-        yamlPatch.addRemove(".h.i({k: l, x)x: n})", RemoveMode.EXISTING, true);
+        yamlPatch.addRemove(".h.i.({k: l, x)x: n})", RemoveMode.EXISTING, true);
         assertMain((
             ""
             + "a: b\n"
