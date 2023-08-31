@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.unkrig.zz.yamlpatch.test;
+package de.unkrig.yamlpatch.test;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -52,7 +52,7 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import org.snakeyaml.engine.v2.parser.ParserImpl;
 import org.snakeyaml.engine.v2.scanner.StreamReader;
 
-import de.unkrig.zz.yamlpatch.YamlPatch;
+import de.unkrig.yamlpatch.YamlPatch;
 
 public
 class TestSnakeYaml {

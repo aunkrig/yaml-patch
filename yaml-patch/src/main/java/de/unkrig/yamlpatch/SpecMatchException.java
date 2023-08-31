@@ -24,13 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.unkrig.zz.yamlpatch;
+package de.unkrig.yamlpatch;
 
 public
-class SpecSyntaxException extends RuntimeException {
+class SpecMatchException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    public SpecSyntaxException(String message) { super(message); }
-    public SpecSyntaxException(String message, Throwable cause) { super(message, cause); }
+    public SpecMatchException(String message) { super(message); }
 }

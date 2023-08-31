@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.unkrig.zz.yamlpatch;
+package de.unkrig.yamlpatch;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

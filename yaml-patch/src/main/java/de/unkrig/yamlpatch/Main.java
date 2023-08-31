@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.unkrig.zz.yamlpatch;
+package de.unkrig.yamlpatch;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -45,9 +45,9 @@ import de.unkrig.commons.util.CommandLineOptionException;
 import de.unkrig.commons.util.CommandLineOptions;
 import de.unkrig.commons.util.annotation.CommandLineOption;
 import de.unkrig.commons.util.annotation.CommandLineOption.Cardinality;
-import de.unkrig.zz.yamlpatch.YamlPatch.AddMode;
-import de.unkrig.zz.yamlpatch.YamlPatch.RemoveMode;
-import de.unkrig.zz.yamlpatch.YamlPatch.SetMode;
+import de.unkrig.yamlpatch.YamlPatch.AddMode;
+import de.unkrig.yamlpatch.YamlPatch.RemoveMode;
+import de.unkrig.yamlpatch.YamlPatch.SetMode;
 
 public
 class Main {
@@ -277,7 +277,7 @@ class Main {
      *   </dd>
      *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file</var></dt>
      *   <dd>
-     *     Transform the YAML document in <var>file</var> in-place.
+     *     Transform the YAML document in <var>file</var> to STDOUT.
      *   </dd>
      *   <dt>{@code yamlpatch} [ <var>option</var> ] <var>file1</var> <var>file2</var></dt>
      *   <dd>
@@ -288,6 +288,9 @@ class Main {
      *     Read the YAML document in each <var>file</var>, modify it, and write it to a file in <var>existing-dir</var>.
      *   </dd>
      * </dl>
+     * <p>
+     *   An input file name "-" designates STDIN; an output file name "-" designates STDOUT.
+     * </p>
      *
      * <h2>Options:</h2>
      *
@@ -334,25 +337,13 @@ class Main {
         Main main = new Main();
         args = CommandLineOptions.parse(args, main);
 
-        if (args.length == 0) {
-            
-            // Transform YAML document from STDIN to STDOUT.
-            main.yamlPatch.contentsTransformer().transform("-", System.in, System.out);
-        } else
-        if (args.length == 1 && args[0].startsWith("!")) {
-
-            // Parse single command line argument as a YAML document, and transform it to STDOUT.
-            main.yamlPatch.transform(new StringReader(args[0].substring(1)), System.out);
-        } else
-        {
-
-            // Transform a set of files.
-            FileTransformations.transform(
-                args,                                               // args
-                main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
-                Mode.TRANSFORM,                                     // mode
-                ExceptionHandler.defaultHandler()                   // exceptionHandler
-            );
-        }
+        FileTransformations.transform(
+            args,                                               // args
+            true,                                               // unixMode
+            main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
+            main.yamlPatch.contentsTransformer(),               // contentsTransformer
+            Mode.TRANSFORM,                                     // mode
+            ExceptionHandler.defaultHandler()                   // exceptionHandler
+        );
     }
 }

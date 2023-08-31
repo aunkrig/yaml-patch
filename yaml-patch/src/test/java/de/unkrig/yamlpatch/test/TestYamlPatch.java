@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.unkrig.zz.yamlpatch.test;
+package de.unkrig.yamlpatch.test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -36,10 +36,10 @@ import org.snakeyaml.engine.v2.common.ScalarStyle;
 import org.snakeyaml.engine.v2.nodes.ScalarNode;
 import org.snakeyaml.engine.v2.nodes.Tag;
 
-import de.unkrig.zz.yamlpatch.SpecSyntaxException;
-import de.unkrig.zz.yamlpatch.YamlPatch;
-import de.unkrig.zz.yamlpatch.YamlPatch.RemoveMode;
-import de.unkrig.zz.yamlpatch.YamlPatch.SetMode;
+import de.unkrig.yamlpatch.SpecSyntaxException;
+import de.unkrig.yamlpatch.YamlPatch;
+import de.unkrig.yamlpatch.YamlPatch.RemoveMode;
+import de.unkrig.yamlpatch.YamlPatch.SetMode;
 
 public
 class TestYamlPatch {

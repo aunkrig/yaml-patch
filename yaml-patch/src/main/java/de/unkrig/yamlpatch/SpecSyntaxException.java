@@ -1,6 +1,6 @@
 
 /*
- * de.unkrig.commons - A general-purpose Java class library
+ * yaml-patch - A command-line tool for modifying YAML documents
  *
  * Copyright (c) 2023, Arno Unkrig
  * All rights reserved.
@@ -24,11 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * Helpers for text-related tasks.
- */
-@NotNullByDefault
-package de.unkrig.zz.yamlpatch;
+package de.unkrig.yamlpatch;
 
-import de.unkrig.commons.nullanalysis.NotNullByDefault;
+public
+class SpecSyntaxException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
+    public SpecSyntaxException(String message) { super(message); }
+    public SpecSyntaxException(String message, Throwable cause) { super(message, cause); }
+}

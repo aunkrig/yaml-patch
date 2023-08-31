@@ -25,7 +25,7 @@
  */
 
 @NotNullByDefault
-package de.unkrig.zz.yamlpatch.test;
+package de.unkrig.yamlpatch.test;
 
 import de.unkrig.commons.nullanalysis.NotNullByDefault;
 
