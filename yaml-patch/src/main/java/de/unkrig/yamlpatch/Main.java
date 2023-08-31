@@ -292,7 +292,7 @@ class Main {
      *   An input file name "-" designates STDIN; an output file name "-" designates STDOUT.
      * </p>
      *
-     * <h2>Options:</h2>
+     * <h2>Options</h2>
      *
      * <h3>General</h3>
      * <dl>
