@@ -226,7 +226,7 @@ class YamlPatch {
      * Inserts an element into, or adds at the the end of a sequence somewhere in a YAML document.
      *
      * @param spec                 Specifies the sequence element within the document
-     * @throws SpecMatchException  The <var>spec</var> specified an map or a set (and not an sequence)
+     * @throws SpecMatchException  The <var>spec</var> specified an map (and not an sequence)
      * @throws SpecMatchException  The specified sequence index is out of range (-sequenceSize ... sequenceSize)
      * @throws SpecMatchException  See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException See {@link #processSpec(Node, String, SpecHandler)}
@@ -251,7 +251,8 @@ class YamlPatch {
     }
 
     /**
-     * Adds a entry with no value to a map somewhere in a YAML document. (Typically used for sets.)
+     * Adds an entry with no value to a map somewhere in a YAML document. (Typically used for sets, which are
+     * effectively maps with only keys and no values.)
      *
      * @param spec                 Specifies the set within the document and the value to add
      * @param prependSet           Add the member at the beginning of the set (instead of to the end)
@@ -386,7 +387,7 @@ class YamlPatch {
     interface SpecHandler {
 
         /**
-         * Designated node is a map (maybe with Tag.SET).
+         * Designated node is a map (maybe with a "{@link Tag#SET set}" {@link Node#getTag() tag}).
          */
         void handleMapEntry(MappingNode map, Node key);
 
