@@ -45,6 +45,7 @@ import de.unkrig.commons.util.CommandLineOptionException;
 import de.unkrig.commons.util.CommandLineOptions;
 import de.unkrig.commons.util.annotation.CommandLineOption;
 import de.unkrig.commons.util.annotation.CommandLineOption.Cardinality;
+import de.unkrig.commons.util.annotation.CommandLineOptionGroup;
 import de.unkrig.yamlpatch.YamlPatch.AddMode;
 import de.unkrig.yamlpatch.YamlPatch.RemoveMode;
 import de.unkrig.yamlpatch.YamlPatch.SetMode;
@@ -143,11 +144,12 @@ class Main {
         public boolean commentOutOriginalEntry;
         public boolean prependMap;
 
-        @CommandLineOption public void existing()    { this.mode = SetMode.EXISTING; }
-        @CommandLineOption public void nonExisting() { this.mode = SetMode.NON_EXISTING; }
-        @CommandLineOption public void comment()     { this.commentOutOriginalEntry = true; }
-        @CommandLineOption public void prependMap()  { this.prependMap = true; }
+        @CommandLineOption(group = ExistingXorNonExisting.class) public void existing()    { this.mode                    = SetMode.EXISTING; }
+        @CommandLineOption(group = ExistingXorNonExisting.class) public void nonExisting() { this.mode                    = SetMode.NON_EXISTING; }
+        @CommandLineOption public void comment()                                           { this.commentOutOriginalEntry = true; }
+        @CommandLineOption public void prependMap()                                        { this.prependMap              = true; }
     }
+    @CommandLineOptionGroup public interface ExistingXorNonExisting {}
 
     /**
      * Add or change one map entry or sequence element.
@@ -337,13 +339,20 @@ class Main {
         Main main = new Main();
         args = CommandLineOptions.parse(args, main);
 
-        FileTransformations.transform(
-            args,                                               // args
-            true,                                               // unixMode
-            main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
-            main.yamlPatch.contentsTransformer(),               // contentsTransformer
-            Mode.TRANSFORM,                                     // mode
-            ExceptionHandler.defaultHandler()                   // exceptionHandler
-        );
+        if (args.length == 1 && args[0].startsWith("!")) {
+
+            // Parse single command line argument as a JSON document, and transform it to STDOUT.
+            main.yamlPatch.transform(new StringReader(args[0].substring(1)), System.out);
+        } else
+        {
+            FileTransformations.transform(
+                args,                                               // args
+                true,                                               // unixMode
+                main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
+                main.yamlPatch.contentsTransformer(),               // contentsTransformer
+                Mode.TRANSFORM,                                     // mode
+                ExceptionHandler.defaultHandler()                   // exceptionHandler
+            );
+        }
     }
 }
