@@ -7,7 +7,7 @@
 
 	<groupId>de.unkrig.yaml-patch</groupId>
 	<artifactId>yaml-patch</artifactId>
-	<version>0.0.2</version>
+	<version>0.0.3-SNAPSHOT</version>
 
 	<name>yaml-patch</name>
 	<url>https://unkrig.de/</url>
