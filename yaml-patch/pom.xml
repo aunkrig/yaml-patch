@@ -7,7 +7,7 @@
 
 	<groupId>de.unkrig.yaml-patch</groupId>
 	<artifactId>yaml-patch</artifactId>
-	<version>0.0.2-SNAPSHOT</version>
+	<version>0.0.2</version>
 
 	<name>yaml-patch</name>
 	<url>https://unkrig.de/</url>
@@ -23,8 +23,8 @@
 	<dependencies>
 		<dependency><groupId>org.snakeyaml</groupId><artifactId>snakeyaml-engine</artifactId><version>2.6</version></dependency>
 
-		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-file</artifactId><version>1.2.19-SNAPSHOT</version></dependency>
-		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-nullanalysis</artifactId><version>1.2.19-SNAPSHOT</version></dependency>
+		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-file</artifactId><version>1.2.19</version></dependency>
+		<dependency><groupId>de.unkrig.commons</groupId><artifactId>commons-nullanalysis</artifactId><version>1.2.19</version></dependency>
 	</dependencies>
 
 <!-- 
@@ -153,6 +153,10 @@
 
 						<configuration>
 							<useStandardDocletOptions>false</useStandardDocletOptions>
+							<additionalJOptions>
+								<additionalJOption>-J--add-opens</additionalJOption>
+								<additionalJOption>-Jjava.base/java.lang.reflect=ALL-UNNAMED</additionalJOption>
+							</additionalJOptions>
 							<additionalparam>-Xdoclint:none</additionalparam>
 
 							<quiet>true</quiet>
