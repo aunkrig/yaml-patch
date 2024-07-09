@@ -34,6 +34,8 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -50,6 +52,7 @@ import org.snakeyaml.engine.v2.comments.CommentType;
 import org.snakeyaml.engine.v2.common.FlowStyle;
 import org.snakeyaml.engine.v2.common.ScalarStyle;
 import org.snakeyaml.engine.v2.composer.Composer;
+import org.snakeyaml.engine.v2.nodes.AnchorNode;
 import org.snakeyaml.engine.v2.nodes.CollectionNode;
 import org.snakeyaml.engine.v2.nodes.MappingNode;
 import org.snakeyaml.engine.v2.nodes.Node;
@@ -111,7 +114,7 @@ class YamlPatch {
     addInsert(String spec, Node sequenceElement) throws IOException {
         this.documentModifiers.add(root -> this.insert(root, spec, sequenceElement));
     }
-    
+
     /**
      * @see #add(Node, String, AddMode, boolean)
      */
@@ -121,6 +124,15 @@ class YamlPatch {
     }
     public static enum AddMode { ANY, NON_EXISTING }
 
+    
+    /**
+     * @see #sort(Node, String)
+     */
+    public void
+    addSort(String spec, boolean reverse) throws IOException {
+    	this.documentModifiers.add(root -> this.sort(root, spec, reverse));
+    }
+    
     /**
      * Adds or changes a map entry or a sequence element somewhere in a YAML document.
      *
@@ -325,6 +337,112 @@ class YamlPatch {
     }
 
     /**
+     * Sorts the elements of a sequences, or the value tuples of a mapping by key
+     *
+     * @param spec Specifies the map or sequence within the document
+     */
+    public Node
+    sort(Node root, String spec, boolean reverse) {
+
+        YamlPatch.processSpec(root, spec, new SpecHandler2() {
+
+            @Override public void
+            handleScalar(ScalarNode scalar) {
+            	throw new SpecSyntaxException("Cannot sort scalar \"" + YamlPatch.toString(scalar) + "\", only sequences and maps");
+			}
+
+			@Override public void
+			handleSequence(SequenceNode sequence) {
+				YamlPatch.sort(sequence, reverse);
+			}
+
+			@Override public void
+			handleMap(MappingNode map) {
+				YamlPatch.sort(map, reverse);
+			}
+
+			@Override public void
+			handleAnchor(AnchorNode anchor) {
+				throw new SpecSyntaxException("Cannot sort anchor \"" + YamlPatch.toString(anchor) + "\", only sequences and maps");
+			}
+        });
+
+        return root;
+    }
+
+    /**
+     * Sorts the value tuples of a {@link MappingNode} by key.
+     */
+    static void
+    sort(MappingNode mappingNode, boolean reverse) {
+    	mappingNode.getValue().sort((a, b) -> reverse ? compare(b.getKeyNode(), a.getKeyNode()) : compare(a.getKeyNode(), b.getKeyNode()));
+    }
+
+    /**
+     * Sorts the elements of a {@link SequenceNode}.
+     */
+    static void
+    sort(SequenceNode sequenceNode, boolean reverse) {
+    	sequenceNode.getValue().sort((a, b) -> reverse ? compare(b, a) : compare(a, b));
+    }
+
+	private static int
+	compare(Node a, Node b) {
+
+		NodeType nodeTypeA = a.getNodeType();
+		NodeType nodeTypeB = b.getNodeType();
+		if (nodeTypeA != nodeTypeB) return nodeTypeA.ordinal() - nodeTypeB.ordinal();
+		
+		switch (nodeTypeA) {
+		case SCALAR:   return compare((ScalarNode)   a, (ScalarNode)   b); 
+		case SEQUENCE: return compare((SequenceNode) a, (SequenceNode) b); 
+		case MAPPING:  return compare((MappingNode)  a, (MappingNode)  b); 
+		case ANCHOR:   return compare((AnchorNode)   a, (AnchorNode)   b); 
+		default:
+			throw new AssertionError(nodeTypeA);
+		}
+	}
+
+	private static int
+	compare(ScalarNode scalarA, ScalarNode scalarB) {
+		return scalarA.getValue().compareTo(scalarB.getValue());
+	}
+
+	private static int
+	compare(SequenceNode sequenceA, SequenceNode sequenceB) {
+		return compare(sequenceA.getValue(), sequenceB.getValue(), (elementA, elementB) -> compare(elementA, elementB));
+	}
+
+	private static int
+	compare(MappingNode mapA, MappingNode mapB) {
+		return compare(mapA.getValue(), mapB.getValue(), (tupleA, tupleB) -> {
+			int result = compare(tupleA.getKeyNode(), tupleB.getKeyNode());
+			if (result != 0) return result;
+			return compare(tupleA.getValueNode(), tupleB.getValueNode());
+		});
+	}
+
+	private static int
+	compare(AnchorNode anchorA, AnchorNode anchorB) {
+		return compare(anchorA.getRealNode(), anchorB.getRealNode());
+	}
+
+	/**
+	 * Compares two {@link List}s element by element. Iff all elements are equal, but the lengths are not, then the
+	 * shorter list is considered "less than" the longer list.
+	 */
+	private static <T> int
+	compare(List<T> listA, List<T> listB, Comparator<T> comparator) {
+		for (Iterator<T> iteratorA = listA.iterator(), iteratorB = listB.iterator();;) {
+			if (!iteratorA.hasNext()) return iteratorB.hasNext() ? -1 : 0;
+			if (!iteratorB.hasNext()) return 1;
+			
+			int result = comparator.compare(iteratorA.next(), iteratorB.next());
+			if (result != 0) return result;
+		}
+	}
+
+    /**
      * Adds a series of block comments to the <var>result</var> that resemble the original <var>node</var>.
      */
     private static void
@@ -396,6 +514,30 @@ class YamlPatch {
          */
         void handleSequenceElement(SequenceNode sequence, int index);
     }
+    
+    public
+    interface SpecHandler2 {
+    	
+    	/**
+    	 * Designated node is a scalar.
+    	 */
+    	void handleScalar(ScalarNode scalar);
+    	
+    	/**
+    	 * Designated node is a sequence.
+    	 */
+    	void handleSequence(SequenceNode sequence);
+    	
+    	/**
+    	 * Designated node is a map (maybe with a "{@link Tag#SET set}" {@link Node#getTag() tag}).
+    	 */
+    	void handleMap(MappingNode map);
+    	
+    	/**
+    	 * Designated node is an anchor.
+    	 */
+    	void handleAnchor(AnchorNode anchor);
+    }
 
     private static final Pattern MAP_ENTRY_SPEC1       = Pattern.compile("\\.([A-Za-z0-9_\\-]+)");
     private static final Pattern MAP_ENTRY_SPEC2       = Pattern.compile("\\.\\((.*)");
@@ -408,6 +550,7 @@ class YamlPatch {
      * @throws SpecMatchException A map entry spec was applied to a non-map element
      * @throws SpecMatchException A map entry spec designates a non-existing key
      * @throws SpecMatchException A sequence element spec was applied to a non-sequence element
+     * @throws SpecMatchException A sequence index was out-of-range (except for the last segment of the <var>spec</var>)
      * @throws SpecMatchException A set member spec was applied to a non-set element
      * @throws SpecSyntaxException
      */
@@ -491,6 +634,7 @@ class YamlPatch {
                         return;
                     }
 
+                    if (index < 0 || index >= value.size()) throw new SpecMatchException("Index " + index + " is out of range; sequence \"" + YamlPatch.toString(yamlSequence) + "\" has " + value.size() + " elements");
                     el = value.get(index);
                     assert el != null;
                     s.delete(0, m.end());
@@ -505,6 +649,64 @@ class YamlPatch {
                 );
             }
         }
+    }
+
+    /**
+     * Parses the <var>spec</var>, locates the relevant node in the <var>root</var> document, and invokes one of the
+     * methods of the <var>specHandler2</var>.
+     * 
+     * @throws SpecMatchException A map entry spec was applied to a non-map element
+     * @throws SpecMatchException A map entry spec designates a non-existing key
+     * @throws SpecMatchException A sequence element spec was applied to a non-sequence element
+     * @throws SpecMatchException A sequence index was out-of-range
+     * @throws SpecMatchException A set member spec was applied to a non-set element
+     * @throws SpecSyntaxException
+     */
+    private static void
+    processSpec(Node root, String spec, SpecHandler2 specHandler2) {
+
+        YamlPatch.processSpec(root, spec, new SpecHandler() {
+
+            @Override public void
+            handleMapEntry(MappingNode map, Node key) {
+            	for (NodeTuple mapElement : map.getValue()) {
+            		if (YamlPatch.equals(mapElement.getKeyNode(), key)) {
+            			handleNode(mapElement.getValueNode());
+            			return;
+            		}
+            	}
+            	throw new SpecMatchException("Map \"" + YamlPatch.toString(map) + "\" lacks key \"" + YamlPatch.toString(key) + "\"");
+            }
+
+            @Override public void
+            handleSequenceElement(SequenceNode sequence, int index) {
+            	List<Node> sequenceElements = sequence.getValue();
+            	if (index < 0 || index >= sequenceElements.size()) throw new SpecMatchException("Index " + index + " out of range");
+            	handleNode(sequenceElements.get(index));
+            }
+
+			private void
+			handleNode(Node node) {
+				switch (node.getNodeType()) {
+				
+				case SCALAR:
+					specHandler2.handleScalar((ScalarNode) node);
+					break;
+					
+				case SEQUENCE:
+					specHandler2.handleSequence((SequenceNode) node);
+					break;
+					
+				case MAPPING:
+					specHandler2.handleMap((MappingNode) node);
+					break;
+					
+				case ANCHOR:
+					specHandler2.handleAnchor((AnchorNode) node);
+					break;
+				}
+			}
+        });
     }
 
     public void

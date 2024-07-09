@@ -231,6 +231,17 @@ class Main {
     }
 
     /**
+     * Helper bean for {@link Main#addSort(SortOptions, String)}.
+     */
+    public static
+    class SortOptions {
+
+        public boolean reverse;
+
+        @CommandLineOption public void reverse() { this.reverse = true; }
+    }
+
+    /**
      * Add a member to a set.
      *
      * <dl>
@@ -246,6 +257,21 @@ class Main {
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addAdd(AddOptions addOptions, String spec) throws IOException {
         this.yamlPatch.addAdd(spec, addOptions.mode, addOptions.prepend);
+    }
+    
+    /**
+     * Sort elements of a sequence, or a set by keys.
+     *
+     * <dl>
+     *   <dt>--reverse</dt>
+     * </dl>
+     * 
+     * @param sortOptions           [ --reverse ]
+     * @main.commandLineOptionGroup File-Transformation
+     */
+    @CommandLineOption(cardinality = Cardinality.ANY) public void
+    addSort(SortOptions sortOptions, String spec) throws IOException {
+    	this.yamlPatch.addSort(spec, sortOptions.reverse);
     }
 
     public static Node

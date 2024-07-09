@@ -280,6 +280,54 @@ class TestYamlPatch {
             ), yamlPatch);
     }
     
+    @Test public void
+    testSortSequence() throws Exception {
+    	
+    	YamlPatch yamlPatch = new YamlPatch();
+    	yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
+    	yamlPatch.addSort(".e", true);
+    	assertMain((
+			""
+			+ "a: b\n"
+			+ "c: d\n"
+			+ "# Hash Comment\n"
+			+ "e:\n"
+			+ "- g\n"
+			+ "- f\n"
+			+ "h:\n"
+			+ "  i: !!set\n"
+			+ "    j:\n"
+			+ "    7:\n"
+			+ "    ? k: l\n"
+			+ "      \"x)x\": n\n"
+			+ "    :\n"
+		), yamlPatch);
+    }
+    
+    @Test public void
+    testSortMap() throws Exception {
+    	
+    	YamlPatch yamlPatch = new YamlPatch();
+    	yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
+    	yamlPatch.addSort(".h.i", true);
+    	assertMain((
+			""
+			+ "a: b\n"
+			+ "c: d\n"
+			+ "# Hash Comment\n"
+			+ "e:\n"
+			+ "- f\n"
+			+ "- g\n"
+			+ "h:\n"
+			+ "  i: !!set\n"
+			+ "    ? k: l\n"
+			+ "      \"x)x\": n\n"
+			+ "    :\n"
+			+ "    j:\n"
+			+ "    7:\n"
+		), yamlPatch);
+    }
+    
     @Test(expected = SpecSyntaxException.class) public void
     testNonTerminalSetMember() throws Exception {
         
