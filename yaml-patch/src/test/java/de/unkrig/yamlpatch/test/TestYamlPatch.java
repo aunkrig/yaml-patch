@@ -309,22 +309,23 @@ class TestYamlPatch {
     	
     	YamlPatch yamlPatch = new YamlPatch();
     	yamlPatch.getDumpSettingsBuilder().setDumpComments(true);
-    	yamlPatch.addSort(".h.i", true);
+    	yamlPatch.addSort("", true);
     	assertMain((
 			""
-			+ "a: b\n"
-			+ "c: d\n"
+			+ "h:\n"
+			+ "  i: !!set\n"
+			+ "    j:\n"
+			+ "    7:\n"
+			+ "    ? k: l\n"
+			+ "      \"x)x\": n\n"
+			+ "    :\n"
 			+ "# Hash Comment\n"
 			+ "e:\n"
 			+ "- f\n"
 			+ "- g\n"
-			+ "h:\n"
-			+ "  i: !!set\n"
-			+ "    ? k: l\n"
-			+ "      \"x)x\": n\n"
-			+ "    :\n"
-			+ "    j:\n"
-			+ "    7:\n"
+			+ "c: d\n"
+			+ "a: b\n"
+			+ ""
 		), yamlPatch);
     }
     

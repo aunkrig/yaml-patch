@@ -132,7 +132,75 @@ class YamlPatch {
     addSort(String spec, boolean reverse) throws IOException {
     	this.documentModifiers.add(root -> this.sort(root, spec, reverse));
     }
-    
+
+    public void
+    transform(Reader in, OutputStream out) throws IOException {
+
+        // Read the document from the reader.
+        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).setParseComments(true).build();
+
+        Node yamlDocument = new Compose(settings).composeReader(in).get();
+
+        for (Transformer<Node, Node> dm : YamlPatch.this.documentModifiers) {
+            yamlDocument = dm.transform(yamlDocument);
+        }
+
+        // Write the document to the output stream.
+        dump(yamlDocument, out);
+    }
+
+    /**
+     * Writes the given <var>node</var> to the given {@link OutputStream}, as configured by the {@link
+     * #getDumpSettingsBuilder()}
+     * 
+     * @see DumpSettingsBuilder
+     */
+    public void
+    dump(Node node, OutputStream out) {
+
+        Dump dump = new Dump(this.dumpSettingsBuilder.build());
+
+        dump.dumpNode(node, new YamlOutputStreamWriter(out, StandardCharsets.UTF_8) {
+   
+            @Override public void
+            processIOException(@Nullable IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        });
+    }
+
+    public ContentsTransformer
+    contentsTransformer() {
+
+        return new ContentsTransformer() {
+            
+            @Override public void
+            transform(String path, InputStream is, OutputStream os) throws IOException {
+                InputStreamReader r = new InputStreamReader(is, StandardCharsets.UTF_8);
+                
+                YamlPatch.this.transform(r, os);
+            }
+        };
+    }
+
+    public FileTransformer
+    fileTransformer(boolean keepOriginals) {
+        return new FileContentsTransformer(this.contentsTransformer(), keepOriginals);
+    }
+
+    /**
+     * Loads a YAML document that defines exactly one node. 
+     */
+    public static Node
+    loadYaml(Reader r) {
+        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).build();
+
+        ParserImpl      parser   = new ParserImpl(settings, new StreamReader(settings, r));
+        Composer        composer = new Composer(settings, parser);
+
+        return composer.getSingleNode().get();
+    }
+
     /**
      * Adds or changes a map entry or a sequence element somewhere in a YAML document.
      *
@@ -150,7 +218,7 @@ class YamlPatch {
      * @throws SpecMatchException     See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException    See {@link #processSpec(Node, String, SpecHandler)}
      */
-    public Node
+    private static Node
     set(Node root, String spec, Node value, SetMode mode, boolean commentOutOriginalEntry, boolean prependMap) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler() {
@@ -214,7 +282,7 @@ class YamlPatch {
      * @throws SpecMatchException     See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException    See {@link #processSpec(Node, String, SpecHandler)}
      */
-    public Node
+    private static Node
     remove(Node root, String spec, RemoveMode mode, boolean commentOutOriginalEntry) {
         
         YamlPatch.processSpec(root, spec, new SpecHandler() {
@@ -243,7 +311,7 @@ class YamlPatch {
      * @throws SpecMatchException  See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException See {@link #processSpec(Node, String, SpecHandler)}
      */
-    public Node
+    private static Node
     insert(Node root, String spec, Node sequenceElement) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler() {
@@ -272,7 +340,7 @@ class YamlPatch {
      * @throws SpecMatchException  See {@link #processSpec(Node, String, SpecHandler)}
      * @throws SpecSyntaxException See {@link #processSpec(Node, String, SpecHandler)}
      */
-    public Node
+    private static Node
     add(Node root, String spec, AddMode mode, boolean prependSet) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler() {
@@ -304,44 +372,11 @@ class YamlPatch {
     }
 
     /**
-     * Adds a new entry with the given key and value, or changes the value of the existing entry.
-     * 
-     * @param commentOutOriginalEntry Iff this changes an existing map entry, add an end comment to the map that
-     *                                displays the original map entry
-     * @return                        The previous value, or {@code null} iff entry with the given key does not exist
-     */
-    @Nullable static Node
-    put(MappingNode map, Node key, Node value, boolean commentOutOriginalEntry, boolean prependMap) {
-        List<NodeTuple> entries = map.getValue();
-        for (int index = 0; index < entries.size(); index++) {
-            NodeTuple nt = entries.get(index);
-            if (equals(key, nt.getKeyNode())) {
-                Node result = nt.getValueNode();
-                if (commentOutOriginalEntry) {
-
-                    List<CommentLine> bcs = key.getBlockComments();
-                    if (bcs == null) key.setBlockComments((bcs = new ArrayList<CommentLine>()));
-
-                    addNodeAsComments(new MappingNode(Tag.MAP, List.of(nt), map.getFlowStyle()), bcs);
-                }
-                entries.set(index, new NodeTuple(key, value));
-                return result;
-            }
-        }
-        if (prependMap) {
-            entries.add(0, new NodeTuple(key, value));
-        } else {
-            entries.add(new NodeTuple(key, value));
-        }
-        return null;
-    }
-
-    /**
      * Sorts the elements of a sequences, or the value tuples of a mapping by key
      *
      * @param spec Specifies the map or sequence within the document
      */
-    public Node
+    private static Node
     sort(Node root, String spec, boolean reverse) {
 
         YamlPatch.processSpec(root, spec, new SpecHandler2() {
@@ -371,9 +406,42 @@ class YamlPatch {
     }
 
     /**
+     * Adds a new entry with the given key and value, or changes the value of the existing entry.
+     * 
+     * @param commentOutOriginalEntry Iff this changes an existing map entry, add an end comment to the map that
+     *                                displays the original map entry
+     * @return                        The previous value, or {@code null} iff entry with the given key does not exist
+     */
+    @Nullable private static Node
+    put(MappingNode map, Node key, Node value, boolean commentOutOriginalEntry, boolean prependMap) {
+        List<NodeTuple> entries = map.getValue();
+        for (int index = 0; index < entries.size(); index++) {
+            NodeTuple nt = entries.get(index);
+            if (equals(key, nt.getKeyNode())) {
+                Node result = nt.getValueNode();
+                if (commentOutOriginalEntry) {
+
+                    List<CommentLine> bcs = key.getBlockComments();
+                    if (bcs == null) key.setBlockComments((bcs = new ArrayList<CommentLine>()));
+
+                    addNodeAsComments(new MappingNode(Tag.MAP, List.of(nt), map.getFlowStyle()), bcs);
+                }
+                entries.set(index, new NodeTuple(key, value));
+                return result;
+            }
+        }
+        if (prependMap) {
+            entries.add(0, new NodeTuple(key, value));
+        } else {
+            entries.add(new NodeTuple(key, value));
+        }
+        return null;
+    }
+
+    /**
      * Sorts the value tuples of a {@link MappingNode} by key.
      */
-    static void
+    private static void
     sort(MappingNode mappingNode, boolean reverse) {
     	mappingNode.getValue().sort((a, b) -> reverse ? compare(b.getKeyNode(), a.getKeyNode()) : compare(a.getKeyNode(), b.getKeyNode()));
     }
@@ -381,7 +449,7 @@ class YamlPatch {
     /**
      * Sorts the elements of a {@link SequenceNode}.
      */
-    static void
+    private static void
     sort(SequenceNode sequenceNode, boolean reverse) {
     	sequenceNode.getValue().sort((a, b) -> reverse ? compare(b, a) : compare(a, b));
     }
@@ -459,7 +527,7 @@ class YamlPatch {
      *                                removed map entry
      * @return                        The previous entry value, nor {@code null} iff no entry was removed
      */
-    @Nullable private Node
+    @Nullable private static Node
     remove(MappingNode map, Node key, boolean commentOutOriginalEntry) {
         List<NodeTuple> mapTuples = map.getValue();
 
@@ -486,7 +554,7 @@ class YamlPatch {
      * @param commentOutOriginalEntry Add an end comment to the sequence that displays the removed sequence element
      * @return                        The removed sequence member
      */
-    @Nullable private Node
+    @Nullable private static Node
     remove(SequenceNode sequence, int index, boolean commentOutOriginalEntry) {
         List<Node> elements = sequence.getValue();
         Node result = elements.remove(index);
@@ -537,6 +605,11 @@ class YamlPatch {
     	 * Designated node is an anchor.
     	 */
     	void handleAnchor(AnchorNode anchor);
+    }
+    
+    public
+    interface SpecHandler3 {
+    	void handleNode(Node node);
     }
 
     private static final Pattern MAP_ENTRY_SPEC1       = Pattern.compile("\\.([A-Za-z0-9_\\-]+)");
@@ -664,28 +737,9 @@ class YamlPatch {
      */
     private static void
     processSpec(Node root, String spec, SpecHandler2 specHandler2) {
+    	processSpec(root, spec, new SpecHandler3() {
 
-        YamlPatch.processSpec(root, spec, new SpecHandler() {
-
-            @Override public void
-            handleMapEntry(MappingNode map, Node key) {
-            	for (NodeTuple mapElement : map.getValue()) {
-            		if (YamlPatch.equals(mapElement.getKeyNode(), key)) {
-            			handleNode(mapElement.getValueNode());
-            			return;
-            		}
-            	}
-            	throw new SpecMatchException("Map \"" + YamlPatch.toString(map) + "\" lacks key \"" + YamlPatch.toString(key) + "\"");
-            }
-
-            @Override public void
-            handleSequenceElement(SequenceNode sequence, int index) {
-            	List<Node> sequenceElements = sequence.getValue();
-            	if (index < 0 || index >= sequenceElements.size()) throw new SpecMatchException("Index " + index + " out of range");
-            	handleNode(sequenceElements.get(index));
-            }
-
-			private void
+			@Override public void
 			handleNode(Node node) {
 				switch (node.getNodeType()) {
 				
@@ -706,61 +760,43 @@ class YamlPatch {
 					break;
 				}
 			}
-        });
+		});
     }
 
-    public void
-    transform(Reader in, OutputStream out) throws IOException {
+    private static void
+	processSpec(Node root, String spec, SpecHandler3 specHandler3) {
 
-        // Read the document from the reader.
-        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).setParseComments(true).build();
+    	if ("".equals(spec)) {
+    		specHandler3.handleNode(root);
+    		return;
+    	}
 
-        Node yamlDocument = new Compose(settings).composeReader(in).get();
+    	YamlPatch.processSpec(root, spec, new SpecHandler() {
 
-        for (Transformer<Node, Node> dm : YamlPatch.this.documentModifiers) {
-            yamlDocument = dm.transform(yamlDocument);
-        }
-
-        // Write the document to the output stream.
-        dump(yamlDocument, out);
-    }
-
-    public ContentsTransformer
-    contentsTransformer() {
-
-        return new ContentsTransformer() {
-            
             @Override public void
-            transform(String path, InputStream is, OutputStream os) throws IOException {
-                InputStreamReader r = new InputStreamReader(is, StandardCharsets.UTF_8);
-                
-                YamlPatch.this.transform(r, os);
+            handleMapEntry(MappingNode map, Node key) {
+            	for (NodeTuple mapElement : map.getValue()) {
+            		if (YamlPatch.equals(mapElement.getKeyNode(), key)) {
+            			specHandler3.handleNode(mapElement.getValueNode());
+            			return;
+            		}
+            	}
+            	throw new SpecMatchException("Map \"" + YamlPatch.toString(map) + "\" lacks key \"" + YamlPatch.toString(key) + "\"");
             }
-        };
-    }
 
-    public FileTransformer
-    fileTransformer(boolean keepOriginals) {
-        return new FileContentsTransformer(this.contentsTransformer(), keepOriginals);
-    }
-
-    /**
-     * Loads a YAML document that defines exactly one node. 
-     */
-    public static Node
-    loadYaml(Reader r) {
-        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).build();
-
-        ParserImpl      parser   = new ParserImpl(settings, new StreamReader(settings, r));
-        Composer        composer = new Composer(settings, parser);
-
-        return composer.getSingleNode().get();
+            @Override public void
+            handleSequenceElement(SequenceNode sequence, int index) {
+            	List<Node> sequenceElements = sequence.getValue();
+            	if (index < 0 || index >= sequenceElements.size()) throw new SpecMatchException("Index " + index + " out of range");
+            	specHandler3.handleNode(sequenceElements.get(index));
+            }
+        });
     }
 
     /**
      * Loads the first node of a YAML document and removes the parsed characters from the <var>sb</sb>.
      */
-    public static Node
+    private static Node
     loadFirst(StringBuilder sb) {
         LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).build();
 
@@ -777,7 +813,7 @@ class YamlPatch {
         return node;
     }
 
-    public static boolean
+    private static boolean
     equals(Node a, Node b) {
 
         if (a == b) return true;
@@ -859,25 +895,5 @@ class YamlPatch {
     public static String
     dumpNoComments(Node node) {
         return toString(node, DumpSettings.builder().build());
-    }
-
-    /**
-     * Writes the given <var>node</var> to the given {@link OutputStream}, as configured by the {@link
-     * #getDumpSettingsBuilder()}
-     * 
-     * @see DumpSettingsBuilder
-     */
-    public void
-    dump(Node node, OutputStream out) {
-
-        Dump dump = new Dump(this.dumpSettingsBuilder.build());
-
-        dump.dumpNode(node, new YamlOutputStreamWriter(out, StandardCharsets.UTF_8) {
-   
-            @Override public void
-            processIOException(@Nullable IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
-        });
     }
 }
