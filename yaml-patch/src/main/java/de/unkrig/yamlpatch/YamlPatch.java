@@ -655,7 +655,9 @@ class YamlPatch {
                         throw new AssertionError(m.pattern());
                     }
                     
-                    if (el.getNodeType() == NodeType.MAPPING) {
+                    switch (el.getNodeType()) {
+
+                    case MAPPING:
                         MappingNode yamlMap = (MappingNode) el;
                         
                         if (s.length() == 0) {
@@ -669,8 +671,9 @@ class YamlPatch {
                                 continue SPEC;
                             }
                         }
-                    } else
-                    if (el.getNodeType() == NodeType.SEQUENCE) {
+                        throw new SpecMatchException("Map does not contain key \"" + toString(key) + "\"");
+
+                    case SEQUENCE:
                         SequenceNode yamlSequence = (SequenceNode) el;
 
                         List<Node> elements = yamlSequence.getValue();
@@ -687,11 +690,10 @@ class YamlPatch {
                             }
                         }
                         throw new SpecMatchException("Sequence does not contain an element \"" + toString(key) + "\"");
-                    } else
-                    {
-                        throw new SpecMatchException("Element is not a map nor a sequence");
+
+                    default:
+                    	throw new SpecMatchException("Element is not a map nor a sequence");
                     }
-                    throw new SpecMatchException("Map does not contain key \"" + toString(key) + "\"");
                 } else
                 if ((m = SEQUENCE_ELEMENT_SPEC.matcher(s)).lookingAt()) {  // [<integer>], []
 
