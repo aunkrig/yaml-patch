@@ -53,8 +53,10 @@ import de.unkrig.yamlpatch.YamlPatch.SetMode;
 public
 class Main {
 
+	private Charset         inCharset  = StandardCharsets.UTF_8;
+	private Charset         outCharset = StandardCharsets.UTF_8;
     private boolean         keepOriginals;
-    private final YamlPatch yamlPatch = new YamlPatch();
+    private final YamlPatch yamlPatch  = new YamlPatch();
     { this.yamlPatch.getDumpSettingsBuilder().setDumpComments(true); }
 
     /**
@@ -75,6 +77,20 @@ class Main {
      */
     @CommandLineOption public void
     keep() { this.keepOriginals = true; }
+
+    /**
+     * Input encoding charset (default UTF-8)
+     * @main.commandLineOptionGroup File-Processing
+     */
+    @CommandLineOption public void
+    setInCharset(Charset inCharset) { this.inCharset = inCharset; }
+
+    /**
+     * Output encoding charset (default UTF-8)
+     * @main.commandLineOptionGroup Output-Generation
+     */
+    @CommandLineOption public void
+    setOutCharset(Charset outCharset) { this.outCharset = outCharset; }
 
     // =============================== DumpSettingsBuider settings. ===============================
 
@@ -368,16 +384,16 @@ class Main {
         if (args.length == 1 && args[0].startsWith("!")) {
 
             // Parse single command line argument as a JSON document, and transform it to STDOUT.
-            main.yamlPatch.transform(new StringReader(args[0].substring(1)), System.out);
+            main.yamlPatch.transform(new StringReader(args[0].substring(1)), System.out, main.outCharset);
         } else
         {
             FileTransformations.transform(
-                args,                                               // args
-                true,                                               // unixMode
-                main.yamlPatch.fileTransformer(main.keepOriginals), // fileTransformer
-                main.yamlPatch.contentsTransformer(),               // contentsTransformer
-                Mode.TRANSFORM,                                     // mode
-                ExceptionHandler.defaultHandler()                   // exceptionHandler
+                args,                                                                                // args
+                true,                                                                                // unixMode
+                main.yamlPatch.fileTransformer(main.inCharset, main.outCharset, main.keepOriginals), // fileTransformer
+                main.yamlPatch.contentsTransformer(main.inCharset, main.outCharset),                 // contentsTransformer
+                Mode.TRANSFORM,                                                                      // mode
+                ExceptionHandler.defaultHandler()                                                    // exceptionHandler
             );
         }
     }

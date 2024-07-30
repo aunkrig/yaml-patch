@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -84,7 +85,7 @@ class YamlPatch {
 
     /**
      * @return The modifiable {@link DumpSettingsBuilder} that will take effect for the next {@link #transform(Reader,
-     *         OutputStream)} operation
+     *         OutputStream, Charset)} operation
      */
     public DumpSettingsBuilder
     getDumpSettingsBuilder() { return this.dumpSettingsBuilder; }
@@ -94,7 +95,7 @@ class YamlPatch {
      */
     public void
     addSet(String spec, Node value, SetMode mode, boolean commentOutOriginalEntry, boolean prependMap) throws IOException {
-        this.documentModifiers.add(root -> this.set(root, spec, value, mode, commentOutOriginalEntry, prependMap));
+        this.documentModifiers.add(root -> YamlPatch.set(root, spec, value, mode, commentOutOriginalEntry, prependMap));
     }
     public static enum SetMode { ANY, EXISTING, NON_EXISTING }
 
@@ -103,7 +104,7 @@ class YamlPatch {
      */
     public void
     addRemove(String spec, RemoveMode mode, boolean commentOutOriginalEntry) throws IOException {
-        this.documentModifiers.add(root -> this.remove(root, spec, mode, commentOutOriginalEntry));
+        this.documentModifiers.add(root -> YamlPatch.remove(root, spec, mode, commentOutOriginalEntry));
     }
     public static enum RemoveMode { ANY, EXISTING }
 
@@ -112,7 +113,7 @@ class YamlPatch {
      */
     public void
     addInsert(String spec, Node sequenceElement) throws IOException {
-        this.documentModifiers.add(root -> this.insert(root, spec, sequenceElement));
+        this.documentModifiers.add(root -> YamlPatch.insert(root, spec, sequenceElement));
     }
 
     /**
@@ -120,21 +121,21 @@ class YamlPatch {
      */
     public void
     addAdd(String spec, AddMode mode, boolean prependSet) throws IOException {
-        this.documentModifiers.add(root -> this.add(root, spec, mode, prependSet));
+        this.documentModifiers.add(root -> YamlPatch.add(root, spec, mode, prependSet));
     }
     public static enum AddMode { ANY, NON_EXISTING }
 
     
     /**
-     * @see #sort(Node, String)
+     * @see #sort(Node, String, boolean)
      */
     public void
     addSort(String spec, boolean reverse) throws IOException {
-    	this.documentModifiers.add(root -> this.sort(root, spec, reverse));
+    	this.documentModifiers.add(root -> YamlPatch.sort(root, spec, reverse));
     }
 
     public void
-    transform(Reader in, OutputStream out) throws IOException {
+    transform(Reader in, OutputStream out, Charset outCharset) throws IOException {
 
         // Read the document from the reader.
         LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(true).setParseComments(true).build();
@@ -146,7 +147,7 @@ class YamlPatch {
         }
 
         // Write the document to the output stream.
-        dump(yamlDocument, out);
+        dump(yamlDocument, out, outCharset);
     }
 
     /**
@@ -156,11 +157,11 @@ class YamlPatch {
      * @see DumpSettingsBuilder
      */
     public void
-    dump(Node node, OutputStream out) {
+    dump(Node node, OutputStream out, Charset outCharset) {
 
         Dump dump = new Dump(this.dumpSettingsBuilder.build());
 
-        dump.dumpNode(node, new YamlOutputStreamWriter(out, StandardCharsets.UTF_8) {
+        dump.dumpNode(node, new YamlOutputStreamWriter(out, outCharset) {
    
             @Override public void
             processIOException(@Nullable IOException ioe) {
@@ -170,22 +171,22 @@ class YamlPatch {
     }
 
     public ContentsTransformer
-    contentsTransformer() {
+    contentsTransformer(Charset inCharset, Charset outCharset) {
 
         return new ContentsTransformer() {
             
             @Override public void
             transform(String path, InputStream is, OutputStream os) throws IOException {
-                InputStreamReader r = new InputStreamReader(is, StandardCharsets.UTF_8);
+                InputStreamReader r = new InputStreamReader(is, inCharset);
                 
-                YamlPatch.this.transform(r, os);
+                YamlPatch.this.transform(r, os, outCharset);
             }
         };
     }
 
     public FileTransformer
-    fileTransformer(boolean keepOriginals) {
-        return new FileContentsTransformer(this.contentsTransformer(), keepOriginals);
+    fileTransformer(Charset inCharset, Charset outCharset, boolean keepOriginals) {
+        return new FileContentsTransformer(this.contentsTransformer(inCharset, outCharset), keepOriginals);
     }
 
     /**

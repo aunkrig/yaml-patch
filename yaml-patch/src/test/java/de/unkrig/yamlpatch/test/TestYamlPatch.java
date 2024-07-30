@@ -341,8 +341,11 @@ class TestYamlPatch {
     assertMain(String expected, YamlPatch yamlPatch) throws Exception {
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ByteArrayInputStream bais = new ByteArrayInputStream(INPUT.getBytes(StandardCharsets.UTF_8));
-        yamlPatch.contentsTransformer().transform("", bais, baos);
+        ByteArrayInputStream  bais = new ByteArrayInputStream(INPUT.getBytes(StandardCharsets.UTF_8));
+        yamlPatch.contentsTransformer(
+    		StandardCharsets.UTF_8, // inCharset 
+    		StandardCharsets.UTF_8  // outCharset
+    	).transform("", bais, baos);
         Assert.assertEquals(expected, baos.toString());
     }
 }
