@@ -73,14 +73,14 @@ class Main {
     /**
      * For in-place transformations, keep copies of the originals
      * 
-     * @main.commandLineOptionGroup File-Processing
+     * @main.commandLineOptionGroup Input-Processing
      */
     @CommandLineOption public void
     keep() { this.keepOriginals = true; }
 
     /**
      * Input encoding charset (default UTF-8)
-     * @main.commandLineOptionGroup File-Processing
+     * @main.commandLineOptionGroup Input-Processing
      */
     @CommandLineOption public void
     setInCharset(Charset inCharset) { this.inCharset = inCharset; }
@@ -185,7 +185,7 @@ class Main {
      * 
      * @param setOptions            [ --existing | --non-existing ] [ --comment ] [ --prepend-map ]
      * @param value                 ( <var>yaml-document</var> | {@code @}<var>file-name</var> )
-     * @main.commandLineOptionGroup File-Transformation
+     * @main.commandLineOptionGroup Document-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addSet(SetOptions setOptions, String spec, String value) throws IOException {
@@ -215,7 +215,7 @@ class Main {
      * </dl>
      * 
      * @param                       removeOptions [ --existing ] [ --comment ]
-     * @main.commandLineOptionGroup File-Transformation
+     * @main.commandLineOptionGroup Document-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addRemove(RemoveOptions removeOptions, String spec) throws IOException {
@@ -226,7 +226,7 @@ class Main {
      * Insert an element into an sequence.
      * 
      * @param yamlDocumentOrFile    ( <var>yaml-document</var> | @<var>file-name</var> )
-     * @main.commandLineOptionGroup File-Transformation
+     * @main.commandLineOptionGroup Document-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addInsert(String spec, String yamlDocumentOrFile) throws IOException {
@@ -268,7 +268,7 @@ class Main {
      * </dl>
      * 
      * @param addOptions            [ --non-existing ] [ --prepend ]
-     * @main.commandLineOptionGroup File-Transformation
+     * @main.commandLineOptionGroup Document-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addAdd(AddOptions addOptions, String spec) throws IOException {
@@ -283,7 +283,7 @@ class Main {
      * </dl>
      * 
      * @param sortOptions           [ --reverse ]
-     * @main.commandLineOptionGroup File-Transformation
+     * @main.commandLineOptionGroup Document-Transformation
      */
     @CommandLineOption(cardinality = Cardinality.ANY) public void
     addSort(SortOptions sortOptions, String spec) throws IOException {
@@ -343,14 +343,14 @@ class Main {
      * {@main.commandLineOptions}
      * </dl>
      *
-     * <h3>File processing</h3>
+     * <h3>Input processing</h3>
      * <dl>
-     * {@main.commandLineOptions File-Processing}
+     * {@main.commandLineOptions Input-Processing}
      * </dl>
      *
-     * <h3>File transformation</h3>
+     * <h3>Document transformation</h3>
      * <dl>
-     * {@main.commandLineOptions File-Transformation}
+     * {@main.commandLineOptions Document-Transformation}
      * </dl>
      *
      * <h3>Output generation</h3>
