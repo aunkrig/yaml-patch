@@ -162,8 +162,8 @@ class Main {
 
         @CommandLineOption(group = ExistingXorNonExisting.class) public void existing()    { this.mode                    = SetMode.EXISTING; }
         @CommandLineOption(group = ExistingXorNonExisting.class) public void nonExisting() { this.mode                    = SetMode.NON_EXISTING; }
-        @CommandLineOption public void comment()                                           { this.commentOutOriginalEntry = true; }
-        @CommandLineOption public void prependMap()                                        { this.prependMap              = true; }
+        @CommandLineOption public void                                       comment()     { this.commentOutOriginalEntry = true; }
+        @CommandLineOption public void                                       prependMap()  { this.prependMap              = true; }
     }
     @CommandLineOptionGroup public interface ExistingXorNonExisting {}
 
